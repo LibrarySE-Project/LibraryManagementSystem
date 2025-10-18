@@ -7,7 +7,7 @@ public class Admin {
     private String password;
     private boolean loggedIn;
 
-    public Admin(String username, String password) {
+    private Admin(String username, String password) {
         this.username = username;
         this.password = password;
         this.loggedIn = false; 
