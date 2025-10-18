@@ -1,6 +1,8 @@
 package librarySE;
 
 public class Admin {
+	private static Admin instance;
+	
     private String username;
     private String password;
     private boolean loggedIn;
@@ -19,6 +21,12 @@ public class Admin {
             loggedIn = false;
             return false;
         }
+    }
+    public static Admin getInstance(String username, String password) {
+        if (instance == null) {
+            instance = new Admin(username, password); // هنا نمرر البيانات من خارج الكود
+        }
+        return instance;
     }
 
     public void logout() {
