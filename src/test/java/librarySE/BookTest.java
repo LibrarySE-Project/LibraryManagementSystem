@@ -86,7 +86,7 @@ class BookTest {
 	}
 	
 	@Test
-	void testPrint() {
+	void testToString() {
 		// work at b3
 		b3.setAvailable(false);
 		String expectedOut = "Python Intro — Alice (ISBN: 457)  [BORROWED]";
