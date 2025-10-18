@@ -3,4 +3,11 @@
   <groupId>ManagementSystem</groupId>
   <artifactId>librarySE</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>org.netbeans.external</groupId>
+            <artifactId>AbsoluteLayout</artifactId>
+            <version>RELEASE230</version>
+        </dependency>
+    </dependencies>
 </project>
