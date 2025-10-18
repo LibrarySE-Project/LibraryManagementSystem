@@ -1,0 +1,46 @@
+package librarySE;
+
+public class Admin {
+    private String username;
+    private String password;
+    private boolean loggedIn;
+
+    public Admin(String username, String password) {
+        this.username = username;
+        this.password = password;
+        this.loggedIn = false; 
+    }
+
+    public boolean login(String enteredUser, String enteredPass) {
+        if (username.equals(enteredUser) && password.equals(enteredPass)) {
+            loggedIn = true;
+            return true;
+        } else {
+            loggedIn = false;
+            return false;
+        }
+    }
+
+    public void logout() {
+        loggedIn = false;
+    }
+
+    public boolean isLoggedIn() {
+        return loggedIn;
+    }
+
+   
+    public String getUsername() {
+        return username;
+    }
+
+
+
+
+
+	public static void main(String[] args) {
+
+
+	}
+
+}
