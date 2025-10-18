@@ -16,11 +16,4 @@ public class LoginManager {
 	    public void logout() {
 	        admin.logout();
 	    }
-	
-
-	public static void main(String[] args) {
-		
-
-	}
-
 }
