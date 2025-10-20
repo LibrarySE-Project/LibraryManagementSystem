@@ -16,4 +16,8 @@ public class LoginManager {
 	    public void logout() {
 	        admin.logout();
 	    }
+	    public boolean isLoggedIn() {
+	        return admin.isLoggedIn();
+	    }
+
 }

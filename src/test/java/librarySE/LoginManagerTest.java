@@ -45,5 +45,13 @@ class LoginManagerTest {
 	    assertFalse(admin.isLoggedIn(), "Admin should be logged out after logout operation");
 		
 	}
+	@Test
+	void testIsLoggedInStatus() {
+	    assertFalse(loginManager.isLoggedIn());
+	    loginManager.login("adminUser", "adminPass");
+	    assertTrue(loginManager.isLoggedIn());
+	    loginManager.logout();
+	    assertFalse(loginManager.isLoggedIn());
+	}
 
 }

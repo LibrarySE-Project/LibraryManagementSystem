@@ -13,11 +13,20 @@ import java.util.Objects;
  */
 
 public class Book {
-    private final String isbn;
-    private final String title;
-    private final String author;
-    private boolean available = true;
-    
+	/** The International Standard Book Number (ISBN) of the book, used to uniquely identify it. */
+	private final String isbn;
+
+	/** The title of the book. */
+	private final String title;
+
+	/** The author of the book. */
+	private final String author;
+
+	/** Indicates whether the book is currently available for borrowing. 
+	 *  True if available, false if it is borrowed or reserved. 
+	 */
+	private boolean available = true;
+
     /**
      * Constructs a new Book object with the specified details.
      *
@@ -56,12 +65,27 @@ public class Book {
      * @return true if available, false if borrowed
     */
     public boolean isAvailable () { return available; }
-    /** 
-     * Updates the availability status of the book.
+    
+    /**
+     * Attempts to borrow the book.
      * 
-     * @param available true if available, false if borrowed
-    */
-    public void setAvailable (boolean available) { this.available = available; }
+     * @return {@code true} if the book was successfully borrowed (was available),
+     *         {@code false} if the book is already borrowed (not available).
+     */
+    public boolean borrow() {
+        if (!available) return false;
+        available = false;
+        return true;
+    }
+
+    /**
+     * Returns the book, making it available again for borrowing.
+     * This method sets the book's availability status to {@code true}.
+     */
+    public void returnBook() {
+        available = true;
+    }
+
 
     /** 
      * Compares this book with another object.
@@ -93,6 +117,6 @@ public class Book {
     */
     @Override
     public String toString() {
-    	return String.format("%s — %s (ISBN: %s) %s", title, author, isbn, available ? " [AVAILABLE]" : " [BORROWED]");
+    	return String.format("%s — %s (ISBN: %s) %s", title, author, isbn, available ? "[AVAILABLE]" : "[BORROWED]");
     }
 }
