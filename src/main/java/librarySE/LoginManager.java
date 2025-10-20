@@ -9,8 +9,8 @@ public class LoginManager {
 	        this.admin = admin;
 	    }
 
-	    public boolean login(String user, String pass) {
-	        return admin.login(user, pass);
+	    public boolean login(String user, String userPass) {
+	        return admin.login(user, userPass);
 	    }
 
 	    public void logout() {

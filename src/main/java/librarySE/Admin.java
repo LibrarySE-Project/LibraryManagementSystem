@@ -15,11 +15,10 @@ public class Admin {
 
     public boolean login(String enteredUser, String enteredPass) {
         if (username.equals(enteredUser) && password.equals(enteredPass)) {
-            loggedIn = true;
-            return true;
+            return (loggedIn = true);
         } else {
             loggedIn = false;
-            return false;
+            return (loggedIn = false);
         }
     }
     public static Admin getInstance(String username, String password) {
@@ -41,8 +40,6 @@ public class Admin {
     public String getUsername() {
         return username;
     }
-
-
 
 }
 
