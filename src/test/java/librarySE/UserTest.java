@@ -42,4 +42,13 @@ class UserTest {
         assertEquals("adm (USER)", normalUser.toString());
         assertEquals("boss (ADMIN)", adminUser.toString());
     }
+
+    @Test
+    void testCheckPassword() {
+        assertTrue(normalUser.checkPassword("alicePass"));
+        assertTrue(adminUser.checkPassword("adminPass"));
+
+        assertFalse(normalUser.checkPassword("wrongPass"));
+        assertFalse(adminUser.checkPassword("12345"));
+    }
 }
