@@ -29,6 +29,9 @@ class UserTest {
         assertEquals("boss", adminUser.getUsername());
         assertEquals(Role.USER, normalUser.getRole());
         assertEquals(Role.ADMIN, adminUser.getRole());
+        assertEquals("alicePass", normalUser.getPassword());
+        assertEquals("adminPass", adminUser.getPassword());
+        
     }
 
     @Test
