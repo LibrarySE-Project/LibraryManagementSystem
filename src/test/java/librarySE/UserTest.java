@@ -2,6 +2,8 @@ package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -164,61 +166,59 @@ class UserTest {
         assertFalse(normalUser.changePassword(null, "newOne"), "Null old password should fail");
         assertFalse(normalUser.changePassword("alicePass", null), "Null new password should fail");
     }
+
     @Test
     void testInitialFineBalance() {
-        assertEquals(0.0, normalUser.getFineBalance());
+        assertEquals(0, normalUser.getFineBalance().compareTo(BigDecimal.ZERO));
     }
+
     @Test
     void testAddFine() {
-        normalUser.addFine(5.0);
-        assertEquals(5.0, normalUser.getFineBalance());
+        normalUser.addFine(new BigDecimal("5.0"));
+        assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("5.0")));
 
-        normalUser.addFine(2.5);
-        assertEquals(7.5, normalUser.getFineBalance());
+        normalUser.addFine(new BigDecimal("2.5"));
+        assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("7.5")));
     }
+
     @Test
     void testAddFineNegative() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            normalUser.addFine(-5.0);
-        });
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> normalUser.addFine(new BigDecimal("-5.0")));
         assertEquals("Fine amount cannot be negative", exception.getMessage());
     }
+
     @Test
     void testPayFine() {
-        normalUser.addFine(10.0);
-        normalUser.payFine(4.0);
-        assertEquals(6.0, normalUser.getFineBalance());
+        normalUser.addFine(new BigDecimal("10.0"));
+        normalUser.payFine(new BigDecimal("4.0"));
+        assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("6.0")));
 
-        normalUser.payFine(6.0);
-        assertEquals(0.0, normalUser.getFineBalance());
+        normalUser.payFine(new BigDecimal("6.0"));
+        assertEquals(0, normalUser.getFineBalance().compareTo(BigDecimal.ZERO));
     }
+
     @Test
     void testPayFineNegative() {
-        normalUser.addFine(10.0);
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            normalUser.payFine(-3.0);
-        });
+        normalUser.addFine(new BigDecimal("10.0"));
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> normalUser.payFine(new BigDecimal("-3.0")));
         assertEquals("Payment amount cannot be negative", exception.getMessage());
     }
+
     @Test
     void testPayFineExceedBalance() {
-        normalUser.addFine(5.0);
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            normalUser.payFine(10.0);
-        });
+        normalUser.addFine(new BigDecimal("5.0"));
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> normalUser.payFine(new BigDecimal("10.0")));
         assertEquals("Payment exceeds current fine balance", exception.getMessage());
     }
+
     @Test
     void testCanBorrow() {
-        // fine 0
         assertTrue(normalUser.canBorrow());
 
-        // fine > 0
-        normalUser.addFine(5.0);
+        normalUser.addFine(new BigDecimal("5.0"));
         assertFalse(normalUser.canBorrow());
 
-        // pay fine to 0
-        normalUser.payFine(5.0);
+        normalUser.payFine(new BigDecimal("5.0"));
         assertTrue(normalUser.canBorrow());
     }
 }
