@@ -29,6 +29,9 @@ class UserTest {
         assertEquals("boss", adminUser.getUsername());
         assertEquals(Role.USER, normalUser.getRole());
         assertEquals(Role.ADMIN, adminUser.getRole());
+        assertEquals("alicePass", normalUser.getPassword());
+        assertEquals("adminPass", adminUser.getPassword());
+        
     }
 
     @Test
@@ -42,4 +45,15 @@ class UserTest {
         assertEquals("adm (USER)", normalUser.toString());
         assertEquals("boss (ADMIN)", adminUser.toString());
     }
+
+
+    @Test
+    void testCheckPassword() {
+        assertTrue(normalUser.checkPassword("alicePass"));
+        assertTrue(adminUser.checkPassword("adminPass"));
+
+        assertFalse(normalUser.checkPassword("wrongPass"));
+        assertFalse(adminUser.checkPassword("12345"));
+    }
 }
+

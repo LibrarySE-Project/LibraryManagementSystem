@@ -1,6 +1,5 @@
 package librarySE;
 
-
 /**
  * Represents a system user within the library system.
  * A user can either be a regular user or an administrator, 
@@ -11,7 +10,6 @@ package librarySE;
  * 
  * @author Malak
  */
-
 public class User {
     
     /** The username of the user. */
@@ -30,8 +28,7 @@ public class User {
      * @param role the role of the user ("user" or "admin")
      * @param password the password of the user
      */
-
-    public User(String username, Role role,String password) {
+    public User(String username, Role role, String password) {
         this.username = username;
         this.password = password;
         this.role = role;
@@ -44,6 +41,29 @@ public class User {
      */
     public String getUsername() {
         return username;
+    }
+    
+    /**
+     * Returns the password of this user.
+     * <p>
+     * Note: In production systems, it's generally better to use 
+     * {@link #checkPassword(String)} instead of exposing the password directly
+     * for security reasons.
+     * </p>
+     * 
+     * @return the user's password
+     */
+    public String getPassword() {
+        return password;
+    }
+
+    /**
+     * Verifies whether the provided password matches the user's password.
+     * @param enteredPassword the password to verify
+     * @return true if the passwords match, false otherwise
+     */
+    public boolean checkPassword(String enteredPassword) {
+        return this.password.equals(enteredPassword);
     }
 
     /**
@@ -64,7 +84,6 @@ public class User {
         return role == Role.ADMIN;
     }
 
-
     /**
      * Returns a string representation of this user 
      * in the format "username (role)".
@@ -76,3 +95,4 @@ public class User {
         return username + " (" + role + ")";
     }
 }
+
