@@ -36,6 +36,9 @@ public class Book {
      */
 
     public Book(String isbn, String title, String author) {
+      if (isbn == null || title == null || author == null) {
+    	       throw new IllegalArgumentException("ISBN, title, and author cannot be null.");
+    	}
         this.isbn = isbn;
         this.title = title;
         this.author = author;
@@ -73,9 +76,7 @@ public class Book {
      *         {@code false} if the book is already borrowed (not available).
      */
     public boolean borrow() {
-        if (!available) return false;
-        available = false;
-        return true;
+    	 return available && !(available = false);
     }
 
     /**
@@ -96,8 +97,8 @@ public class Book {
     */
     @Override
     public boolean equals(Object obj) {
+    	if (this == obj) return true;
     	if (obj == null || getClass() != obj.getClass()) return false;
-        if (this == obj) return true;
         Book b = (Book) obj;
         return isbn.equals(b.isbn);
     }
