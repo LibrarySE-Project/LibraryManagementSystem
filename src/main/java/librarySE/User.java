@@ -20,6 +20,9 @@ public class User {
     
     /** The password of the user (protected for subclass access). */
     protected String password;
+    
+    /** The current fine balance of the user. Users cannot borrow new books until it is 0. */
+    private double fineBalance;
 
     /**
      * Constructs a new User with the specified username, role, and password.
@@ -32,6 +35,7 @@ public class User {
         this.username = username;
         this.password = password;
         this.role = role;
+        this.fineBalance = 0; // default fine balance is 0
     }
 
     /**
@@ -59,6 +63,7 @@ public class User {
 
     /**
      * Verifies whether the provided password matches the user's password.
+     * 
      * @param enteredPassword the password to verify
      * @return true if the passwords match, false otherwise
      */
@@ -85,14 +90,55 @@ public class User {
     }
 
     /**
+     * Returns the current fine balance of the user.
+     * 
+     * @return the fine balance in monetary units
+     */
+    public double getFineBalance() {
+        return fineBalance;
+    }
+
+    /**
+     * Adds a fine amount to the user's balance.
+     * 
+     * @param amount the fine amount to add; must be positive
+     * @throws IllegalArgumentException if amount is negative
+     */
+    public void addFine(double amount) {
+        if (amount < 0) throw new IllegalArgumentException("Fine amount cannot be negative");
+        fineBalance += amount;
+    }
+
+    /**
+     * Pays (reduces) a portion of the user's fine balance.
+     * 
+     * @param amount the amount to pay; must be positive and not exceed current balance
+     * @throws IllegalArgumentException if amount is negative or greater than balance
+     */
+    public void payFine(double amount) {
+        if (amount < 0) throw new IllegalArgumentException("Payment amount cannot be negative");
+        if (amount > fineBalance) throw new IllegalArgumentException("Payment exceeds current fine balance");
+        fineBalance -= amount;
+    }
+
+    /**
+     * Checks whether the user is allowed to borrow new books.
+     * 
+     * @return true if fine balance is 0, false otherwise
+     */
+    public boolean canBorrow() {
+        return fineBalance == 0;
+    }
+
+    /**
      * Returns a string representation of this user 
-     * in the format "username (role)".
+     * in the format "username (role) [Fine: x]".
      * 
      * @return a formatted string describing the user
      */
     @Override
     public String toString() {
-        return username + " (" + role + ")";
+        return username + " (" + role + ") [Fine: " + fineBalance + "]";
     }
 }
 
