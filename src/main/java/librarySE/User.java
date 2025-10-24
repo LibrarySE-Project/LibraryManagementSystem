@@ -23,6 +23,7 @@ public class User {
     
     /** The hashed password of the user. */
     private String passwordHash;
+    private double fineBalance;
 
     /**
      * Constructs a new {@code User} with the specified username, role, and password.
@@ -119,6 +120,44 @@ public class User {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Error hashing password", e);
         }
+    }
+    /**
+     * Returns the current fine balance of the user.
+     * 
+     * @return the fine balance in monetary units
+     */
+    public double getFineBalance() {
+        return fineBalance;
+    }
+    /**
+     * Adds a fine amount to the user's balance.
+     * 
+     * @param amount the fine amount to add; must be positive
+     * @throws IllegalArgumentException if amount is negative
+     */
+    public void addFine(double amount) {
+        if (amount < 0) throw new IllegalArgumentException("Fine amount cannot be negative");
+        fineBalance += amount;
+    }
+    /**
+     * Checks whether the user is allowed to borrow new books.
+     * 
+     * @return true if fine balance is 0, false otherwise
+     */
+    public boolean canBorrow() {
+        return fineBalance == 0;
+    }
+
+/**
+     * Pays (reduces) a portion of the user's fine balance.
+     * 
+     * @param amount the amount to pay; must be positive and not exceed current balance
+     * @throws IllegalArgumentException if amount is negative or greater than balance
+     */
+    public void payFine(double amount) {
+        if (amount < 0) throw new IllegalArgumentException("Payment amount cannot be negative");
+        if (amount > fineBalance) throw new IllegalArgumentException("Payment exceeds current fine balance");
+        fineBalance -= amount;
     }
 
     /**
