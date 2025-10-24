@@ -45,6 +45,7 @@ class UserTest {
         assertEquals("boss (ADMIN) [Fine: 0.0]", adminUser.toString());
     }
 
+
     @Test
     void testCheckPassword() {
         assertTrue(normalUser.checkPassword("alicePass"));
