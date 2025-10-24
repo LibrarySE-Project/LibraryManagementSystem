@@ -80,13 +80,17 @@ public class User {
 
     /**
      * Verifies whether the provided password matches the stored (hashed) password.
-     * 
+     *
      * @param enteredPassword the plain-text password to verify
      * @return true if the passwords match, false otherwise
      */
     public boolean checkPassword(String enteredPassword) {
+    	   if (enteredPassword == null || passwordHash == null) {
+    	        return false;
+        }
         return passwordHash.equals(hashPassword(enteredPassword));
     }
+
 
     /**
      * Changes the user's password if the old password is correct.
@@ -113,8 +117,12 @@ public class User {
      * @return the hashed password in hexadecimal format
      */
     private static String hashPassword(String password) {
+        return hashPassword(password, "SHA-256");
+    }
+
+    protected static String hashPassword(String password, String algorithm) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
             byte[] hash = digest.digest(password.getBytes());
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
@@ -125,6 +133,9 @@ public class User {
             throw new RuntimeException("Error hashing password", e);
         }
     }
+
+
+
 
     /**
      * Returns the current fine balance of the user.

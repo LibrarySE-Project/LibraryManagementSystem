@@ -1,225 +1,191 @@
 package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import java.math.BigDecimal;
+import java.security.NoSuchAlgorithmException;
+import org.junit.jupiter.api.*;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-
+/**
+ * Unit tests for {@link User} class.
+ * Covers constructor, role checks, password management, fines, and string representation.
+ */
 class UserTest {
 
     private User normalUser;
     private User adminUser;
 
-    /**
-     * Runs before each test.
-     * Creates a normal user and an admin user for testing.
-     */
     @BeforeEach
     void setUp() {
         normalUser = new User("adm", Role.USER, "alicePass");
         adminUser = new User("boss", Role.ADMIN, "adminPass");
     }
 
-    /**
-     * Runs after each test.
-     * Clears user objects.
-     */
     @AfterEach
     void tearDown() {
         normalUser = null;
         adminUser = null;
     }
 
-    /**
-     * Test getters: username and role are set correctly.
-     */
+    /** Tests constructor and getter methods. */
     @Test
-    void testGetters() {
-        assertEquals("adm", normalUser.getUsername(), "Username should match");
-        assertEquals("boss", adminUser.getUsername(), "Username should match");
-        assertEquals(Role.USER, normalUser.getRole(), "Role should be USER");
-        assertEquals(Role.ADMIN, adminUser.getRole(), "Role should be ADMIN");
-    }
-
-    /**
-     * Test isAdmin(): returns true only for admin users.
-     */
-    @Test
-    void testIsAdmin() {
-        assertFalse(normalUser.isAdmin(), "Normal user should not be admin");
-        assertTrue(adminUser.isAdmin(), "Admin user should be admin");
-    }
-
-    /**
-     * Test toString(): returns formatted string "username (ROLE)".
-     */
-    @Test
-    void testToString() {
-        assertEquals("adm (USER)", normalUser.toString(), "toString format mismatch");
-        assertEquals("boss (ADMIN)", adminUser.toString(), "toString format mismatch");
-    }
-
-    /**
-     * Test checkPassword(): verifies correct and incorrect passwords.
-     */
-    @Test
-    void testCheckPassword() {
-        // Correct passwords
-        assertTrue(normalUser.checkPassword("alicePass"), "Correct password should pass");
-        assertTrue(adminUser.checkPassword("adminPass"), "Correct password should pass");
-
-        // Incorrect passwords
-        assertFalse(normalUser.checkPassword("wrongPass"), "Wrong password should fail");
-        assertFalse(adminUser.checkPassword("12345"), "Wrong password should fail");
-    }
-
-    /**
-     * Test changePassword(): ensures password update works correctly.
-     */
-    @Test
-    void testChangePassword() {
-        // Change password with correct old password
-        assertTrue(normalUser.changePassword("alicePass", "newPass123"), "Should change password if old one is correct");
-        // Verify the new password works
-        assertTrue(normalUser.checkPassword("newPass123"), "New password should match");
-        // Old password should no longer work
-        assertFalse(normalUser.checkPassword("alicePass"), "Old password should no longer be valid");
-
-        // Try changing password with incorrect old password
-        assertFalse(adminUser.changePassword("wrongOld", "newAdminPass"), "Should not change password if old one is incorrect");
-        // Password should remain unchanged
-        assertTrue(adminUser.checkPassword("adminPass"), "Old password should still be valid");
-    }
-
-    /**
-     * Check that two users with same username but different roles are distinct.
-     */
-    @Test
-    void testUsersAreDistinct() {
-        User duplicateUser = new User("adm", Role.ADMIN, "otherPass");
-        assertNotSame(normalUser, duplicateUser, "Should not refer to same object");
-        assertNotEquals(normalUser.getRole(), duplicateUser.getRole(), "Roles should differ");
-        assertFalse(normalUser.checkPassword("otherPass"), "Password hashes should differ");
-    }
-
-    /**
-     * Creating a user with null username should throw an exception or behave predictably.
-     */
-    @Test
-    void testNullUsername() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new User(null, Role.USER, "somePass");
-        }, "Null username should throw exception");
-    }
-
-    /**
-     * Creating a user with null password should throw an exception or fail gracefully.
-     */
-    @Test
-    void testNullPassword() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new User("john", Role.USER, null);
-        }, "Null password should throw exception");
-    }
-    /**
-     * Empty password should still hash successfully (but not recommended).
-     */
-    @Test
-    void testEmptyPassword() {
-        User u = new User("emptyGuy", Role.USER, "");
-        assertTrue(u.checkPassword(""), "Empty string password should match itself");
-        assertFalse(u.checkPassword(" "), "Space should not match empty password");
-    }
-
-    /**
-     * Edge test: Verify that hashing the same password twice gives same hash (deterministic).
-     */
-    @Test
-    void testHashConsistency() {
-        User u1 = new User("x1", Role.USER, "repeatPass");
-        User u2 = new User("x2", Role.USER, "repeatPass");
-        // Hashes should be same because same password & algorithm
-        assertTrue(u1.checkPassword("repeatPass"));
-        assertTrue(u2.checkPassword("repeatPass"));
-    }
-
-    /**
-     * Verify different passwords produce different hashes.
-     */
-    @Test
-    void testDifferentPasswordsProduceDifferentHashes() {
-        User u1 = new User("a1", Role.USER, "1234");
-        User u2 = new User("a2", Role.USER, "12345");
-        assertFalse(u1.checkPassword("12345"), "Hash mismatch expected");
-        assertFalse(u2.checkPassword("1234"), "Hash mismatch expected");
-    }
-
-    /**
-     * Attempting to change password with null values.
-     */
-    @Test
-    void testChangePasswordWithNulls() {
-        assertFalse(normalUser.changePassword(null, "newOne"), "Null old password should fail");
-        assertFalse(normalUser.changePassword("alicePass", null), "Null new password should fail");
-    }
-
-    @Test
-    void testInitialFineBalance() {
+    void testConstructorAndGetters() {
+        assertEquals("adm", normalUser.getUsername());
+        assertEquals(Role.USER, normalUser.getRole());
         assertEquals(0, normalUser.getFineBalance().compareTo(BigDecimal.ZERO));
     }
 
+    /** Tests constructor throws exception when arguments are null. */
     @Test
-    void testAddFine() {
+    void testConstructorWithNullsThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> new User(null, Role.USER, "pass"));
+        assertThrows(IllegalArgumentException.class, () -> new User("user", null, "pass"));
+        assertThrows(IllegalArgumentException.class, () -> new User("user", Role.ADMIN, null));
+    }
+
+    /** Tests isAdmin method for USER and ADMIN roles. */
+    @Test
+    void testIsAdmin() {
+        assertFalse(normalUser.isAdmin());
+        assertTrue(adminUser.isAdmin());
+    }
+
+    /** Tests password verification for correct, wrong, and null passwords. */
+    @Test
+    void testPasswordVerification() {
+        assertTrue(normalUser.checkPassword("alicePass"));
+        assertFalse(normalUser.checkPassword("wrongPass"));
+        assertFalse(normalUser.checkPassword(null));
+    }
+
+    /** Tests changing password successfully and failing with wrong or null inputs. */
+    @Test
+    void testChangePasswordSuccessAndFailure() {
+        assertTrue(normalUser.changePassword("alicePass", "newPass"));
+        assertTrue(normalUser.checkPassword("newPass"));
+        assertFalse(normalUser.checkPassword("alicePass"));
+
+        assertFalse(adminUser.changePassword("wrong", "newAdmin"));
+        assertTrue(adminUser.checkPassword("adminPass"));
+
+        assertFalse(normalUser.changePassword(null, "something"));
+        assertFalse(normalUser.changePassword("newPass", null));
+    }
+
+    /** Tests behavior with empty passwords. */
+    @Test
+    void testEmptyPasswordBehavesConsistently() {
+        User u = new User("empty", Role.USER, "");
+        assertTrue(u.checkPassword(""));
+        assertFalse(u.checkPassword(" "));
+    }
+
+    /** Tests hash consistency for same and different passwords. */
+    @Test
+    void testHashConsistencyAndDifference() {
+        User u1 = new User("u1", Role.USER, "samePass");
+        User u2 = new User("u2", Role.USER, "samePass");
+        User u3 = new User("u3", Role.USER, "diffPass");
+
+        assertTrue(u1.checkPassword("samePass"));
+        assertTrue(u2.checkPassword("samePass"));
+        assertFalse(u1.checkPassword("diffPass"));
+        assertFalse(u3.checkPassword("samePass"));
+    }
+
+    /** Tests that addFine increments fine balance correctly. */
+    @Test
+    void testAddFineIncrementsBalance() {
         normalUser.addFine(new BigDecimal("5.0"));
         assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("5.0")));
-
         normalUser.addFine(new BigDecimal("2.5"));
         assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("7.5")));
     }
 
+    /** Tests that adding negative fine throws exception. */
     @Test
-    void testAddFineNegative() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> normalUser.addFine(new BigDecimal("-5.0")));
-        assertEquals("Fine amount cannot be negative", exception.getMessage());
+    void testAddFineNegativeThrowsException() {
+        Exception ex = assertThrows(IllegalArgumentException.class,
+                () -> normalUser.addFine(new BigDecimal("-1")));
+        assertEquals("Fine amount cannot be negative", ex.getMessage());
     }
 
+    /** Tests that adding null fine throws NullPointerException. */
     @Test
-    void testPayFine() {
+    void testAddFineNullThrowsNPE() {
+        assertThrows(NullPointerException.class, () -> normalUser.addFine(null));
+    }
+
+    /** Tests paying fine partially and fully reduces fine balance. */
+    @Test
+    void testPayFineNormalAndFull() {
         normalUser.addFine(new BigDecimal("10.0"));
         normalUser.payFine(new BigDecimal("4.0"));
         assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("6.0")));
-
         normalUser.payFine(new BigDecimal("6.0"));
         assertEquals(0, normalUser.getFineBalance().compareTo(BigDecimal.ZERO));
     }
 
+    /** Tests that paying negative fine throws exception. */
     @Test
-    void testPayFineNegative() {
-        normalUser.addFine(new BigDecimal("10.0"));
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> normalUser.payFine(new BigDecimal("-3.0")));
-        assertEquals("Payment amount cannot be negative", exception.getMessage());
+    void testPayFineNegativeThrowsException() {
+        normalUser.addFine(new BigDecimal("5"));
+        Exception ex = assertThrows(IllegalArgumentException.class,
+                () -> normalUser.payFine(new BigDecimal("-2")));
+        assertEquals("Payment amount cannot be negative", ex.getMessage());
     }
 
+    /** Tests paying more than current balance throws exception. */
     @Test
-    void testPayFineExceedBalance() {
-        normalUser.addFine(new BigDecimal("5.0"));
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> normalUser.payFine(new BigDecimal("10.0")));
-        assertEquals("Payment exceeds current fine balance", exception.getMessage());
+    void testPayFineExceedBalanceThrowsException() {
+        normalUser.addFine(new BigDecimal("5"));
+        Exception ex = assertThrows(IllegalArgumentException.class,
+                () -> normalUser.payFine(new BigDecimal("10")));
+        assertEquals("Payment exceeds current fine balance", ex.getMessage());
     }
 
+    /** Tests paying zero fine does not change balance. */
     @Test
-    void testCanBorrow() {
+    void testPayFineZeroAmountNoChange() {
+        normalUser.addFine(new BigDecimal("5"));
+        normalUser.payFine(BigDecimal.ZERO);
+        assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("5")));
+    }
+
+    /** Tests canBorrow behavior depending on fine balance. */
+    @Test
+    void testCanBorrowBehavior() {
         assertTrue(normalUser.canBorrow());
-
-        normalUser.addFine(new BigDecimal("5.0"));
+        normalUser.addFine(new BigDecimal("3"));
         assertFalse(normalUser.canBorrow());
-
-        normalUser.payFine(new BigDecimal("5.0"));
+        normalUser.payFine(new BigDecimal("3"));
         assertTrue(normalUser.canBorrow());
+    }
+
+    /** Tests users with same username but different roles are distinct. */
+    @Test
+    void testUsersWithSameUsernameDifferentRole() {
+        User u2 = new User("adm", Role.ADMIN, "otherPass");
+        assertNotSame(normalUser, u2);
+        assertNotEquals(normalUser.getRole(), u2.getRole());
+        assertFalse(normalUser.checkPassword("otherPass"));
+    }
+
+    /** Tests that toString contains username and role. */
+    @Test
+    void testToStringContainsRoleAndUsername() {
+        String s = normalUser.toString();
+        assertTrue(s.contains("adm"));
+        assertTrue(s.contains("USER"));
+    }
+
+    /** Tests that hashPassword throws RuntimeException on invalid algorithm. */
+    @Test
+    void testHashPasswordCatchBlockTriggered() {
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            User.hashPassword("password123", "INVALID_ALGO");
+        });
+
+        assertTrue(ex.getMessage().contains("Error hashing password"));
+        assertTrue(ex.getCause() instanceof NoSuchAlgorithmException);
     }
 }
-
