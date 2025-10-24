@@ -76,7 +76,9 @@ public class Book {
      *         {@code false} if the book is already borrowed (not available).
      */
     public boolean borrow() {
-    	 return available && !(available = false);
+    	  if (!available) return false;
+    	    available = false;
+    	    return true;
     }
 
     /**

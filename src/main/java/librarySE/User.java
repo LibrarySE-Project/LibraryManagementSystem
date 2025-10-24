@@ -1,18 +1,19 @@
 package librarySE;
 
+import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-/** * Represents a system user within the library system. 
-* A user can either be a regular user or an administrator, 
-* distinguished by their role attribute.
-*
-* <p>This class is used as a base for all users of the system, 
-* including the Admin class which extends it to gain additional privileges.</p> 
-* 
-* @author Malak 
-*/
-
+/**
+ * Represents a system user within the library system. 
+ * A user can either be a regular user or an administrator, 
+ * distinguished by their role attribute.
+ *
+ * <p>This class is used as a base for all users of the system, 
+ * including the Admin class which extends it to gain additional privileges.</p> 
+ * 
+ * @author Malak 
+ */
 public class User {
     
     /** The username of the user. */
@@ -23,11 +24,15 @@ public class User {
     
     /** The hashed password of the user. */
     private String passwordHash;
+    
+    /** The current fine balance of the user. */
+    private BigDecimal fineBalance;
 
     /**
      * Constructs a new {@code User} with the specified username, role, and password.
      * <p>
      * The provided password is automatically hashed using SHA-256 for secure storage.
+     * The fine balance is initialized to 0.
      * </p>
      *
      * @param username the name identifying the user (must not be {@code null})
@@ -43,8 +48,8 @@ public class User {
         this.username = username;
         this.role = role;
         this.passwordHash = hashPassword(password);
+        this.fineBalance = BigDecimal.ZERO;
     }
-
 
     /**
      * Returns the username of this user.
@@ -119,6 +124,50 @@ public class User {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Error hashing password", e);
         }
+    }
+
+    /**
+     * Returns the current fine balance of the user.
+     * 
+     * @return the fine balance as {@link BigDecimal}
+     */
+    public BigDecimal getFineBalance() {
+        return fineBalance;
+    }
+
+    /**
+     * Adds a fine amount to the user's balance.
+     * 
+     * @param amount the fine amount to add; must be positive
+     * @throws IllegalArgumentException if amount is negative
+     */
+    public void addFine(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) 
+            throw new IllegalArgumentException("Fine amount cannot be negative");
+        fineBalance = fineBalance.add(amount);
+    }
+
+    /**
+     * Checks whether the user is allowed to borrow new books.
+     * 
+     * @return true if fine balance is 0, false otherwise
+     */
+    public boolean canBorrow() {
+        return fineBalance.compareTo(BigDecimal.ZERO) == 0;
+    }
+
+    /**
+     * Pays (reduces) a portion of the user's fine balance.
+     * 
+     * @param amount the amount to pay; must be positive and not exceed current balance
+     * @throws IllegalArgumentException if amount is negative or greater than balance
+     */
+    public void payFine(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) 
+            throw new IllegalArgumentException("Payment amount cannot be negative");
+        if (amount.compareTo(fineBalance) > 0) 
+            throw new IllegalArgumentException("Payment exceeds current fine balance");
+        fineBalance = fineBalance.subtract(amount);
     }
 
     /**

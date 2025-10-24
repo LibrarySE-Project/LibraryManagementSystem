@@ -1,8 +1,8 @@
 package librarySE;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-
 /**
  * Represents a single borrowing record in the library system.
  * <p>
@@ -37,7 +37,7 @@ public class BorrowRecord {
     private boolean returned;
 
     /** The fine amount assigned to this record (if overdue). */
-    private double fine;
+    private BigDecimal fine;
 
     /**
      * Constructs a new BorrowRecord with the specified user and book.
@@ -55,7 +55,7 @@ public class BorrowRecord {
         this.borrowDate = LocalDate.now();
         this.dueDate = borrowDate.plusDays(BORROW_PERIOD_DAYS);
         this.returned = false;
-        this.fine = 0.0;
+        this.fine = BigDecimal.ZERO;
     }
 
     public User getUser() { return user; }
@@ -63,21 +63,39 @@ public class BorrowRecord {
     public LocalDate getBorrowDate() { return borrowDate; }
     public LocalDate getDueDate() { return dueDate; }
     public boolean isReturned() { return returned; }
-    public double getFine() { return fine; }
+    public BigDecimal getFine() { return fine; }
 
-    public void calculateFine(double finePerDay, LocalDate currentDate) {
+    /**
+     * Calculates the fine based on the number of overdue days and the fine rate per day.
+     * <p>
+     * The fine is only applied if the book is overdue and not yet returned.
+     * </p>
+     *
+     * @param finePerDay  the daily fine amount
+     * @param currentDate the current date used to check overdue status
+     */
+    public void calculateFine(BigDecimal finePerDay, LocalDate currentDate) {
         if (!returned && currentDate.isAfter(dueDate)) {
             long daysOverdue = ChronoUnit.DAYS.between(dueDate, currentDate);
-            fine = daysOverdue * finePerDay;
+            fine = finePerDay.multiply(BigDecimal.valueOf(daysOverdue));
         } else {
-            fine = 0.0;
+            fine = BigDecimal.ZERO;
         }
     }
 
+    /**
+     * Marks the book as returned.
+     */
     public void markReturned() {
         returned = true;
     }
 
+    /**
+     * Checks whether this borrowing record is overdue as of the given date.
+     *
+     * @param currentDate the date to check against the due date
+     * @return true if the book is overdue and not returned, false otherwise
+     */
     public boolean isOverdue(LocalDate currentDate) {
         return !returned && currentDate.isAfter(dueDate);
     }
@@ -85,7 +103,7 @@ public class BorrowRecord {
     @Override
     public String toString() {
         return String.format(
-                "%s borrowed \"%s\" on %s, due on %s, returned: %b, fine: %.2f",
+                "%s borrowed \"%s\" on %s, due on %s, returned: %b, fine: %s",
                 user.getUsername(), book.getTitle(), borrowDate, dueDate, returned, fine
         );
     }
