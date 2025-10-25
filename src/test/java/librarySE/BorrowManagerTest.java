@@ -180,6 +180,7 @@ class BorrowManagerTest {
         );
         assertEquals("User must return all borrowed books before paying fines.", e.getMessage());
     }
+
 }
 
 
