@@ -66,38 +66,6 @@ class BookTest {
     }
 
     /**
-     * Comprehensive test for {@link Book#borrow()} and {@link Book#returnBook()}.
-     * <p>
-     * Verifies:
-     * <ul>
-     *   <li>Successful borrowing and returning cycles</li>
-     *   <li>Availability state transitions</li>
-     *   <li>Exception thrown when returning an already available book</li>
-     * </ul>
-     * </p>
-     */
-    @Test
-    void testBorrowAndReturnBookComprehensive() {
-        assertTrue(b3.borrow(), "First borrow should succeed");
-        assertFalse(b3.isAvailable(), "Book should be unavailable after borrow");
-
-        assertFalse(b3.borrow(), "Second borrow should fail when already borrowed");
-
-        b3.returnBook();
-        assertTrue(b3.isAvailable(), "Book should be available after return");
-
-        assertTrue(b3.borrow(), "Borrow after return should succeed");
-        assertFalse(b3.isAvailable(), "Book unavailable again after borrow");
-
-        b3.returnBook();
-        assertTrue(b3.isAvailable(), "Book available after final return");
-
-        Exception exception = assertThrows(IllegalStateException.class, () -> b3.returnBook(),
-                "Returning an already available book should throw exception");
-        assertEquals("Cannot return a book that is already available.", exception.getMessage());
-    }
-
-    /**
      * Tests the {@link Book#toString()} method.
      * <p>
      * Ensures correct string representation for both available and borrowed states.
@@ -169,7 +137,7 @@ class BookTest {
     }
 
     /**
-     * Tests thread-safety of {@link Book#returnBook()} method.
+     * Tests thread-safety of {@link Book#returnItem()} method.
      * <p>
      * Ensures that concurrent returns are safely handled without
      * corrupting the book’s availability state.
@@ -182,7 +150,7 @@ class BookTest {
 
         Runnable returnTask = () -> {
             try {
-                book.returnBook();
+                book.returnItem();
             } catch (IllegalStateException ignored) {
                 // expected if already returned
             }
@@ -196,6 +164,35 @@ class BookTest {
         t2.join();
 
         assertTrue(book.isAvailable(), "Book should be available after concurrent returns");
+    }
+    /**
+     * Comprehensive test for {@link Book#borrow()} and {@link Book#returnItem()}.
+     * <p>
+     * Verifies:
+     * <ul>
+     *   <li>Successful borrowing and returning cycles</li>
+     *   <li>Availability state transitions</li>
+     *   <li>Returning an already available book returns {@code false}</li>
+     * </ul>
+     * </p>
+     */
+    @Test
+    void testBorrowAndReturnBookComprehensive() {
+        assertTrue(b3.borrow(), "First borrow should succeed");
+        assertFalse(b3.isAvailable(), "Book should be unavailable after borrow");
+
+        assertFalse(b3.borrow(), "Second borrow should fail when already borrowed");
+
+        assertTrue(b3.returnItem(), "Return after borrow should succeed");
+        assertTrue(b3.isAvailable(), "Book should be available after return");
+
+        assertTrue(b3.borrow(), "Borrow after return should succeed");
+        assertFalse(b3.isAvailable(), "Book unavailable again after borrow");
+
+        assertTrue(b3.returnItem(), "Book available after final return");
+
+       
+        assertFalse(b3.returnItem(), "Returning an already available book should return false");
     }
 }
 
