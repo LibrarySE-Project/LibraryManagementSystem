@@ -3,53 +3,39 @@ package librarySE;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+
 /**
  * Represents a single borrowing record in the library system.
  * <p>
- * Each record links a {@link User} with a {@link Book}, tracking the borrow date,
- * due date, return status, and any fine applied when the book is overdue.
- * </p>
- * <p>
- * The fine is not calculated automatically; it is handled by {@link BorrowManager}
- * when the user returns the book.
+ * Each record connects a {@link User} with a {@link Book}, tracking the borrow date,
+ * due date, return status, and applicable fines for overdue items.
  * </p>
  * 
  * @author Eman
  */
 public class BorrowRecord {
 
-    /** Number of days a book can be borrowed before it becomes overdue. */
     private static final int BORROW_PERIOD_DAYS = 28;
+    private static final BigDecimal FINE_PER_DAY = BigDecimal.valueOf(5);
 
-    /** The user who borrowed the book. */
     private final User user;
-
-    /** The book that has been borrowed. */
     private final Book book;
-
-    /** The date when the book was borrowed. */
     private final LocalDate borrowDate;
-
-    /** The due date for returning the book. */
     private final LocalDate dueDate;
-
-    /** Indicates whether the book has been returned. */
     private boolean returned;
-
-    /** The fine amount assigned to this record (if overdue). */
     private BigDecimal fine;
 
     /**
-     * Constructs a new BorrowRecord with the specified user and book.
-     * <p>
-     * The borrow date is set to today, and the due date is automatically set
-     * to {@link #BORROW_PERIOD_DAYS} after the borrow date.
-     * </p>
-     *
+     * Constructs a borrowing record for a given user and book.
+     * 
      * @param user the user borrowing the book
-     * @param book the book being borrowed
+     * @param book the borrowed book
+     * @throws IllegalArgumentException if either argument is null
      */
     public BorrowRecord(User user, Book book) {
+        if (user == null || book == null) {
+            throw new IllegalArgumentException("User and book cannot be null.");
+        }
         this.user = user;
         this.book = book;
         this.borrowDate = LocalDate.now();
@@ -58,26 +44,51 @@ public class BorrowRecord {
         this.fine = BigDecimal.ZERO;
     }
 
+    /** @return the user who borrowed the book */
     public User getUser() { return user; }
+
+    /** @return the borrowed book */
     public Book getBook() { return book; }
+
+    /** @return the date when the book was borrowed */
     public LocalDate getBorrowDate() { return borrowDate; }
+
+    /** @return the due date when the book should be returned */
     public LocalDate getDueDate() { return dueDate; }
+
+    /** @return true if the book has been returned, false otherwise */
     public boolean isReturned() { return returned; }
-    public BigDecimal getFine() { return fine; }
 
     /**
-     * Calculates the fine based on the number of overdue days and the fine rate per day.
+     * Returns the current fine for this borrowing record.
      * <p>
-     * The fine is only applied if the book is overdue and not yet returned.
+     * The fine is automatically recalculated based on the provided date.
      * </p>
-     *
-     * @param finePerDay  the daily fine amount
-     * @param currentDate the current date used to check overdue status
+     * 
+     * @param currentDate the date used to check if the item is overdue
+     * @return the fine amount
+     * @throws IllegalArgumentException if {@code currentDate} is null
      */
-    public void calculateFine(BigDecimal finePerDay, LocalDate currentDate) {
+    public BigDecimal getFine(LocalDate currentDate) {
+        calculateFine(currentDate);
+        return fine;
+    }
+
+    /**
+     * Calculates and updates the fine based on the number of overdue days.
+     * <p>
+     * The fine is applied only if the book is overdue and not yet returned.
+     * </p>
+     * 
+     * @param currentDate the date used to determine overdue status
+     * @throws IllegalArgumentException if {@code currentDate} is null
+     */
+    public void calculateFine(LocalDate currentDate) {
+        if (currentDate == null)
+            throw new IllegalArgumentException("currentDate cannot be null.");
         if (!returned && currentDate.isAfter(dueDate)) {
             long daysOverdue = ChronoUnit.DAYS.between(dueDate, currentDate);
-            fine = finePerDay.multiply(BigDecimal.valueOf(daysOverdue));
+            fine = FINE_PER_DAY.multiply(BigDecimal.valueOf(daysOverdue));
         } else {
             fine = BigDecimal.ZERO;
         }
@@ -85,29 +96,36 @@ public class BorrowRecord {
 
     /**
      * Marks the book as returned.
+     * <p>
+     * Once marked as returned, the fine value is reset to zero.
+     * </p>
      */
     public void markReturned() {
-        returned = true;
+        this.returned = true;
+        this.fine = BigDecimal.ZERO;
     }
 
     /**
-     * Checks whether this borrowing record is overdue as of the given date.
-     *
-     * @param currentDate the date to check against the due date
-     * @return true if the book is overdue and not returned, false otherwise
+     * Checks if the book is currently overdue.
+     * 
+     * @param currentDate the date used to evaluate overdue status
+     * @return true if the book is overdue and not returned; false otherwise
+     * @throws IllegalArgumentException if {@code currentDate} is null
      */
     public boolean isOverdue(LocalDate currentDate) {
+        if (currentDate == null)
+            throw new IllegalArgumentException("currentDate cannot be null.");
         return !returned && currentDate.isAfter(dueDate);
     }
 
+    /**
+     * Returns a formatted string representation of the borrowing record.
+     * 
+     * @return a string describing the user, book, borrow date, due date, and fine
+     */
     @Override
     public String toString() {
-        return String.format(
-                "%s borrowed \"%s\" on %s, due on %s, returned: %b, fine: %s",
-                user.getUsername(), book.getTitle(), borrowDate, dueDate, returned, fine
-        );
+        return String.format("%s borrowed \"%s\" on %s (due: %s) | Returned: %b | Fine: %s",
+                user.getUsername(), book.getTitle(), borrowDate, dueDate, returned, fine);
     }
 }
-
-
-
