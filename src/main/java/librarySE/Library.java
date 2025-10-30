@@ -35,28 +35,30 @@ public class Library {
     }
 
     /** Borrow a library item */
-    public boolean borrowItem(User user, String title, FineStrategy fineStrategy) {
-        if (user == null || title == null || fineStrategy == null)
+    public boolean borrowItem(User user, String title) {
+        if (user == null || title == null)
             throw new IllegalArgumentException("Arguments cannot be null.");
 
-        applyOverdueFines(LocalDate.now());//Apply late fines before borrowing
-        
-        //Ensure the user does not have fines or overdue items
+        applyOverdueFines(LocalDate.now());
+
         if (user.hasOutstandingFine())
             throw new IllegalStateException("User has unpaid fines or overdue items, cannot borrow.");
-        //Search for available item
+
         LibraryItem item = items.stream()
                 .filter(i -> i.getTitle().equalsIgnoreCase(title) && i.isAvailable())
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Item not found or unavailable."));
-        //Update loan status
-        if (!item.borrow())
-            return false;
-        //Create a new loan record
+
+        MaterialFineStrategy fineStrategy = new MaterialFineStrategy(item.getMaterialType());
+
+        if (!item.borrow()) return false;
+
         BorrowRecord record = new BorrowRecord(user, item, fineStrategy);
         borrowRecords.add(record);
+
         return true;
     }
+
 
     /** Return a borrowed library item */
     public void returnItem(User user, LibraryItem item) {

@@ -45,6 +45,10 @@ public class BorrowRecord {
 
     /** Current fine for this borrowing record */
     private BigDecimal fine;
+    
+    /** Indicates if the overdue fine has already been applied to the user to avoid double charging. */
+    private boolean fineApplied = false;
+
 
     /**
      * Constructs a borrowing record for a given user, item, and fine strategy.
@@ -107,8 +111,9 @@ public class BorrowRecord {
     /** Applies the current fine to the user's account. */
     public void applyFineToUser(LocalDate currentDate) {
         calculateFine(currentDate);
-        if (fine.compareTo(BigDecimal.ZERO) > 0) {
+        if (!fineApplied && fine.compareTo(BigDecimal.ZERO) > 0) {
             user.addFine(fine);
+            fineApplied = true;
         }
     }
 
