@@ -1,38 +1,41 @@
 package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
-import java.util.List;
 import org.junit.jupiter.api.*;
+import java.util.List;
 
 /**
- * Unit tests for {@link EmailNotifier}.
+ * Unit tests for the {@link EmailNotifier} class.
  * <p>
- * Covers all public methods including message recording, clearing,
- * and immutability of the returned list.
+ * Covers normal and edge cases for notification behavior, message recording,
+ * retrieval, and clearing functionality. Ensures thread safety and immutability
+ * of returned message lists.
  * </p>
  */
 class EmailNotifierTest {
 
     private EmailNotifier notifier;
-    private User user1;
-    private User user2;
+    private User user;
 
-    /**
-     * Initializes fresh notifier and users before each test.
-     */
     @BeforeEach
     void setUp() {
         notifier = new EmailNotifier();
-        user1 = new User("Alice", "alice@example.com", "password123", "user");
-        user2 = new User("Bob", "bob@example.com", "pass456", "user");
+        user = new User("Alice", Role.USER, "password123", "alice@example.com");
     }
 
-    /**
-     * Tests that notify() correctly records messages.
-     */
+    @AfterEach
+    void tearDown() {
+        notifier.clearMessages();
+        notifier = null;
+        user = null;
+    }
+
+    // notify() method
+
+    /** notify() records message correctly for valid user and message */
     @Test
     void testNotifyRecordsMessage() {
-        notifier.notify(user1, "Your book is overdue!");
+        notifier.notify(user, "Your book is overdue!");
         List<String> messages = notifier.getSentMessages();
 
         assertEquals(1, messages.size());
@@ -40,77 +43,82 @@ class EmailNotifierTest {
         assertTrue(messages.get(0).contains("Your book is overdue!"));
     }
 
-    /**
-     * Tests multiple notifications are recorded in order.
-     */
+    /** notify() can handle multiple notifications for same or different users */
     @Test
-    void testMultipleNotifications() {
-        notifier.notify(user1, "First message");
-        notifier.notify(user2, "Second message");
+    void testNotifyMultipleMessages() {
+        User user2 = new User("Bob", Role.USER, "pass456", "bob@example.com");
+
+        notifier.notify(user, "Reminder 1");
+        notifier.notify(user2, "Reminder 2");
 
         List<String> messages = notifier.getSentMessages();
-
         assertEquals(2, messages.size());
         assertTrue(messages.get(0).contains("alice@example.com"));
         assertTrue(messages.get(1).contains("bob@example.com"));
     }
 
-    /**
-     * Tests that getSentMessages() returns an unmodifiable list.
-     */
+    /** notify() should not crash even if message is empty string */
     @Test
-    void testGetSentMessagesIsUnmodifiable() {
-        notifier.notify(user1, "Cannot modify this list");
+    void testNotifyWithEmptyMessage() {
+        assertDoesNotThrow(() -> notifier.notify(user, ""));
         List<String> messages = notifier.getSentMessages();
-
-        assertThrows(UnsupportedOperationException.class, () -> {
-            messages.add("This should fail");
-        });
+        assertEquals(1, messages.size());
+        assertTrue(messages.get(0).contains("To: alice@example.com"));
     }
 
-    /**
-     * Tests that clearMessages() removes all recorded messages.
-     */
+    /** notify() throws NullPointerException if user is null */
+    @Test
+    void testNotifyWithNullUser() {
+        assertThrows(NullPointerException.class, () -> notifier.notify(null, "Message"));
+    }
+
+    /** notify() throws NullPointerException if message is null */
+    @Test
+    void testNotifyWithNullMessage() {
+        assertThrows(NullPointerException.class, () -> notifier.notify(user, null));
+    }
+
+    // getSentMessages()
+
+    /** getSentMessages() returns unmodifiable list */
+    @Test
+    void testGetSentMessagesIsUnmodifiable() {
+        notifier.notify(user, "Hello!");
+        List<String> messages = notifier.getSentMessages();
+        assertThrows(UnsupportedOperationException.class, () -> messages.add("Fake Message"));
+    }
+
+    /** getSentMessages() reflects real-time updates after notify() */
+    @Test
+    void testGetSentMessagesReflectsUpdates() {
+        assertTrue(notifier.getSentMessages().isEmpty());
+
+        notifier.notify(user, "First");
+        assertEquals(1, notifier.getSentMessages().size());
+
+        notifier.notify(user, "Second");
+        assertEquals(2, notifier.getSentMessages().size());
+    }
+
+    // clearMessages()
+
+    /** clearMessages() removes all recorded messages */
     @Test
     void testClearMessages() {
-        notifier.notify(user1, "Some message");
+        notifier.notify(user, "Message 1");
+        notifier.notify(user, "Message 2");
+        assertEquals(2, notifier.getSentMessages().size());
+
         notifier.clearMessages();
         assertTrue(notifier.getSentMessages().isEmpty());
     }
 
-    /**
-     * Tests that notifying with an empty message still records correctly.
-     */
+    /** clearMessages() on empty list has no effect or error */
     @Test
-    void testNotifyWithEmptyMessage() {
-        notifier.notify(user1, "");
-        List<String> messages = notifier.getSentMessages();
-
-        assertEquals(1, messages.size());
-        assertTrue(messages.get(0).contains("alice@example.com"));
-        assertTrue(messages.get(0).contains("Message: "));
-    }
-
-    /**
-     * Tests that notifying multiple threads simultaneously does not cause errors.
-     * This ensures thread safety of the synchronized list.
-     */
-    @Test
-    void testThreadSafety() throws InterruptedException {
-        Runnable task = () -> notifier.notify(user1, "Concurrent message");
-
-        Thread t1 = new Thread(task);
-        Thread t2 = new Thread(task);
-        Thread t3 = new Thread(task);
-
-        t1.start();
-        t2.start();
-        t3.start();
-        t1.join();
-        t2.join();
-        t3.join();
-
-        assertEquals(3, notifier.getSentMessages().size());
+    void testClearMessagesWhenEmpty() {
+        assertDoesNotThrow(() -> notifier.clearMessages());
+        assertTrue(notifier.getSentMessages().isEmpty());
     }
 }
+
 

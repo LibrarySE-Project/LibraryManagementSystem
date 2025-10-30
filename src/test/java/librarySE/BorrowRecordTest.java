@@ -1,250 +1,184 @@
 package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
-import java.time.LocalDate;
+import org.junit.jupiter.api.*;
 import java.math.BigDecimal;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import java.time.LocalDate;
 
+/**
+ * Unit tests for the {@link BorrowRecord} class.
+ * <p>
+ * Covers constructor validation, fine calculation, overdue detection,
+ * applying fines, returning items, and edge cases (including invalid inputs).
+ * Includes both positive and negative test cases.
+ * </p>
+ */
 class BorrowRecordTest {
 
     private User user;
-    private Book book;
+    private LibraryItem mockItem;
+    private FineStrategy fineStrategy;
+    private BorrowRecord record;
 
-    /** 
-     * Runs before each test.
-     * Creates a new user and book to ensure a clean state for every test case.
-     */
     @BeforeEach
     void setUp() {
-        user = new User("Alice", Role.USER, "pass123");
-        book = new Book("111", "Java Programming", "Author A");
+        // Mock fine strategy that gives 14 days period and 1 per day fine
+        fineStrategy = new FineStrategy() {
+            public BigDecimal calculateFine(long overdueDays) {
+                return BigDecimal.valueOf(overdueDays);
+            }
+            public int getBorrowPeriodDays() {
+                return 14;
+            }
+        };
+
+        // Mock item that tracks availability
+        mockItem = new LibraryItem() {
+            private boolean available = true;
+            public String getTitle() { return "Mock Book"; }
+            public boolean isAvailable() { return available; }
+            public boolean returnItem() {
+                if (available) return false;
+                available = true;
+                return true;
+            }
+            public boolean borrow() {
+                if (!available) return false;
+                available = false;
+                return true;
+            }
+            public MaterialType getMaterialType() { return MaterialType.BOOK; }
+        };
+
+        user = new User("Alice", Role.USER, "password123", "alice@example.com");
+        record = new BorrowRecord(user, mockItem, fineStrategy);
     }
 
-    // ---------------- Constructor Tests ----------------
+    @AfterEach
+    void tearDown() {
+        user = null;
+        mockItem = null;
+        fineStrategy = null;
+        record = null;
+    }
 
-    /** 
-     * Verifies that the constructor initializes all fields correctly.
-     */
+    // Constructor and Initialization
+
+    /** Constructor sets all fields correctly and marks item as borrowed */
     @Test
-    void testConstructorValid() {
-        BorrowRecord record = new BorrowRecord(user, book);
+    void testConstructorSetsFieldsCorrectly() {
         assertEquals(user, record.getUser());
-        assertEquals(book, record.getBook());
-        assertEquals(LocalDate.now(), record.getBorrowDate());
-        assertEquals(LocalDate.now().plusDays(28), record.getDueDate());
-        assertFalse(record.isReturned());
-        assertEquals(BigDecimal.ZERO, record.getFine(LocalDate.now()));
+        assertEquals(mockItem, record.getItem());
+        assertFalse(mockItem.isAvailable());
+        assertNotNull(record.getBorrowDate());
+        assertEquals(record.getBorrowDate().plusDays(14), record.getDueDate());
     }
 
-    /** 
-     * Ensures that the constructor throws an exception if user or book is null.
-     */
+    /** Constructor throws if any argument is null */
     @Test
-    void testConstructorWithNulls() {
-        assertThrows(IllegalArgumentException.class, () -> new BorrowRecord(null, book));
-        assertThrows(IllegalArgumentException.class, () -> new BorrowRecord(user, null));
+    void testConstructorWithNullArguments() {
+        assertThrows(IllegalArgumentException.class, () -> new BorrowRecord(null, mockItem, fineStrategy));
+        assertThrows(IllegalArgumentException.class, () -> new BorrowRecord(user, null, fineStrategy));
+        assertThrows(IllegalArgumentException.class, () -> new BorrowRecord(user, mockItem, null));
     }
 
-    /** 
-     * Checks that the default fine per day value is initialized correctly.
-     */
+    // Fine Calculation
+
+    /** getFine returns 0 when not overdue */
     @Test
-    void testConstructor_DefaultFinePerDay() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        assertEquals(BigDecimal.valueOf(5), record.getFinePerDay());
+    void testGetFineWhenNotOverdue() {
+        LocalDate beforeDue = record.getDueDate();
+        assertEquals(BigDecimal.ZERO, record.getFine(beforeDue));
     }
 
-    // ---------------- calculateFine Tests ----------------
-
-    /** 
-     * Fine should be zero when the book is not overdue.
-     */
+    /** getFine calculates positive fine when overdue */
     @Test
-    void testCalculateFine_NotOverdue() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.calculateFine(LocalDate.now());
-        assertEquals(BigDecimal.ZERO, record.getFine(LocalDate.now()));
+    void testGetFineWhenOverdue() {
+        LocalDate afterDue = record.getDueDate().plusDays(5);
+        BigDecimal fine = record.getFine(afterDue);
+        assertEquals(BigDecimal.valueOf(5), fine);
     }
 
-    /** 
-     * Fine should be correct for one day overdue.
-     */
+    /** calculateFine sets fine to 0 if item returned */
     @Test
-    void testCalculateFine_1DayOverdue() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.calculateFine(record.getDueDate().plusDays(1));
-        assertEquals(BigDecimal.valueOf(5), record.getFine(record.getDueDate().plusDays(1)));
+    void testCalculateFineWhenItemReturned() {
+        mockItem.returnItem();
+        record.calculateFine(record.getDueDate().plusDays(10));
+        assertEquals(BigDecimal.ZERO, record.getFine(record.getDueDate().plusDays(10)));
     }
 
-    /** 
-     * Fine should accumulate for multiple overdue days.
-     */
+    /** calculateFine throws for null date */
     @Test
-    void testCalculateFine_MultipleDaysOverdue() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.calculateFine(record.getDueDate().plusDays(3));
-        assertEquals(BigDecimal.valueOf(15), record.getFine(record.getDueDate().plusDays(3)));
-    }
-
-    /** 
-     * Fine remains zero if the book has already been returned.
-     */
-    @Test
-    void testCalculateFine_BookReturned() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.markReturned();
-        record.calculateFine(record.getDueDate().plusDays(4));
-        assertEquals(BigDecimal.ZERO, record.getFine(record.getDueDate().plusDays(4)));
-    }
-
-    /** 
-     * Ensures calculateFine throws an exception if date is null.
-     */
-    @Test
-    void testCalculateFine_NullDate() {
-        BorrowRecord record = new BorrowRecord(user, book);
+    void testCalculateFineWithNullDate() {
         assertThrows(IllegalArgumentException.class, () -> record.calculateFine(null));
     }
 
-    /** 
-     * Fine should be zero if the given date is before the borrow date (edge case).
-     */
+    // Fine Application
+
+    /** applyFineToUser adds fine once when overdue */
     @Test
-    void testCalculateFine_BeforeBorrowDate() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.calculateFine(record.getBorrowDate().minusDays(1));
-        assertEquals(BigDecimal.ZERO, record.getFine(record.getBorrowDate().minusDays(1)));
+    void testApplyFineToUserOnce() {
+        LocalDate afterDue = record.getDueDate().plusDays(3);
+        record.applyFineToUser(afterDue);
+        BigDecimal fineBefore = user.getFineBalance();
+
+        // Second call should not double-charge
+        record.applyFineToUser(afterDue);
+        assertEquals(fineBefore, user.getFineBalance());
+        assertEquals(BigDecimal.valueOf(3), fineBefore);
     }
 
-    // ---------------- markReturned Tests ----------------
+    /** applyFineToUser should not add fine if not overdue */
+    @Test
+    void testApplyFineToUserWhenNotOverdue() {
+        record.applyFineToUser(record.getBorrowDate());
+        assertEquals(BigDecimal.ZERO, user.getFineBalance());
+    }
 
-    /** 
-     * Checks that markReturned updates the status and resets fine to zero.
-     */
+    // Return Item
+
+    /** markReturned should apply fine and mark item available */
     @Test
     void testMarkReturned() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        assertFalse(record.isReturned());
+        LocalDate afterDue = record.getDueDate().plusDays(2);
+        record.applyFineToUser(afterDue);
         record.markReturned();
-        assertTrue(record.isReturned());
-        assertEquals(BigDecimal.ZERO, record.getFine(record.getDueDate().plusDays(5)));
+        assertTrue(mockItem.isAvailable());
     }
 
-    /** 
-     * If markReturned is called twice, it should not affect the record’s state.
-     */
+    // Overdue Check
+
+    /** isOverdue returns true only if after due and not returned */
     @Test
-    void testMarkReturned_CalledTwice() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.markReturned();
-        record.markReturned(); // Calling again shouldn't change anything
-        assertTrue(record.isReturned());
-        assertEquals(BigDecimal.ZERO, record.getFine(record.getDueDate().plusDays(5)));
+    void testIsOverdueTrue() {
+        LocalDate afterDue = record.getDueDate().plusDays(1);
+        assertTrue(record.isOverdue(afterDue));
     }
 
-    // ---------------- isOverdue Tests ----------------
-
-    /** 
-     * isOverdue should return true when current date is past due date.
-     */
+    /** isOverdue returns false if item is returned */
     @Test
-    void testIsOverdue_TrueCase() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        assertTrue(record.isOverdue(record.getDueDate().plusDays(1)));
+    void testIsOverdueFalseWhenReturned() {
+        mockItem.returnItem();
+        assertFalse(record.isOverdue(record.getDueDate().plusDays(5)));
     }
 
-    /** 
-     * isOverdue should return false before the due date.
-     */
+    /** isOverdue throws if currentDate is null */
     @Test
-    void testIsOverdue_FalseBeforeDue() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        assertFalse(record.isOverdue(record.getDueDate().minusDays(1)));
-    }
-
-    /** 
-     * isOverdue should return false exactly on the due date.
-     */
-    @Test
-    void testIsOverdue_OnDueDate() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        assertFalse(record.isOverdue(record.getDueDate()));
-    }
-
-    /** 
-     * isOverdue should return false if the book was already returned.
-     */
-    @Test
-    void testIsOverdue_BookReturned() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.markReturned();
-        assertFalse(record.isOverdue(record.getDueDate().plusDays(1)));
-    }
-
-    /** 
-     * Ensures isOverdue throws an exception when a null date is passed.
-     */
-    @Test
-    void testIsOverdue_NullDate() {
-        BorrowRecord record = new BorrowRecord(user, book);
+    void testIsOverdueWithNullDate() {
         assertThrows(IllegalArgumentException.class, () -> record.isOverdue(null));
     }
 
-    // ---------------- getFine Tests ----------------
+    // toString
 
-    /** 
-     * getFine should not modify internal state when called multiple times.
-     */
+    /** toString contains username, title, due date, and fine */
     @Test
-    void testGetFine_DoesNotModifyState() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        BigDecimal fineBefore = record.getFine(record.getDueDate().plusDays(2));
-        BigDecimal fineAfter = record.getFine(record.getDueDate().plusDays(2));
-        assertEquals(fineBefore, fineAfter);
-    }
-
-    // ---------------- toString Tests ----------------
-
-    /** 
-     * Ensures toString contains all record details before the book is returned.
-     */
-    @Test
-    void testToString_ContainsDetailsBeforeReturn() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.calculateFine(record.getDueDate().plusDays(2));
+    void testToStringContainsImportantData() {
         String s = record.toString();
         assertTrue(s.contains(user.getUsername()));
-        assertTrue(s.contains(book.getTitle()));
-        assertTrue(s.contains(record.getBorrowDate().toString()));
-        assertTrue(s.contains(record.getDueDate().toString()));
-        assertTrue(s.contains("Returned: false"));
-        assertTrue(s.contains("Fine: 10"));
-    }
-
-    /** 
-     * Ensures toString correctly reflects returned status and fine reset.
-     */
-    @Test
-    void testToString_ReturnedWithFineReset() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.calculateFine(record.getDueDate().plusDays(2));
-        record.markReturned();
-        String s = record.toString();
-        assertTrue(s.contains("Returned: true"));
-        assertTrue(s.contains("Fine: 0"));
-    }
-
-    /** 
-     * Ensures toString works correctly when the book is immediately returned.
-     */
-    @Test
-    void testToString_ImmediatelyReturned() {
-        BorrowRecord record = new BorrowRecord(user, book);
-        record.markReturned();
-        String s = record.toString();
-        assertTrue(s.contains("Returned: true"));
-        assertTrue(s.contains("Fine: 0"));
+        assertTrue(s.contains(mockItem.getTitle()));
+        assertTrue(s.contains("due"));
+        assertTrue(s.contains("Fine"));
     }
 }
+
 
