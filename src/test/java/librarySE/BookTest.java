@@ -2,10 +2,15 @@ package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
+/**
+ * Unit tests for the {@link Book} class.
+ * <p>
+ * Verifies constructor validation, getters/setters, borrow/return functionality,
+ * equality/hashCode behavior, string representation, and thread safety.
+ * </p>
+ */
 class BookTest {
 
     private Book b1;
@@ -15,7 +20,8 @@ class BookTest {
     /**
      * Runs before each test.
      * <p>
-     * Creates multiple {@link Book} objects for testing.
+     * Initializes multiple Book instances with different ISBNs and details
+     * to cover equality and borrowing scenarios.
      * </p>
      */
     @BeforeEach
@@ -28,7 +34,7 @@ class BookTest {
     /**
      * Runs after each test.
      * <p>
-     * Clears references to avoid data interference between test executions.
+     * Clears references to allow garbage collection.
      * </p>
      */
     @AfterEach
@@ -37,87 +43,25 @@ class BookTest {
     }
 
     /**
-     * Tests all getter methods of the {@link Book} class.
+     * Test constructor and getters.
      * <p>
-     * Ensures that ISBN, title, author, and default availability
-     * are correctly initialized and retrievable.
+     * Ensures that the Book instance is created correctly and all getters
+     * return expected values. Checks availability default state.
      * </p>
      */
     @Test
-    void testGetters() {
-        assertEquals("193", b1.getIsbn(), "ISBN should match");
-        assertEquals("Java Basics", b1.getTitle(), "Title should match");
-        assertEquals("John Doe", b1.getAuthor(), "Author should match");
-        assertTrue(b1.isAvailable(), "New book should be available");
+    void testConstructorAndGetters() {
+        assertEquals("193", b1.getIsbn());
+        assertEquals("Java Basics", b1.getTitle());
+        assertEquals("John Doe", b1.getAuthor());
+        assertTrue(b1.isAvailable(), "Newly created book should be available");
     }
 
     /**
-     * Tests the {@link Book#borrow()} method.
+     * Test constructor with invalid arguments.
      * <p>
-     * Verifies that borrowing succeeds for an available book
-     * and fails when attempting to borrow a book that is already borrowed.
-     * </p>
-     */
-    @Test
-    void testBorrow() {
-        assertTrue(b3.borrow(), "Borrowing available book should succeed");
-        assertFalse(b3.isAvailable(), "Book should now be unavailable");
-        assertFalse(b3.borrow(), "Borrowing already borrowed book should fail");
-    }
-
-    /**
-     * Comprehensive test for {@link Book#borrow()} and {@link Book#returnBook()}.
-     * <p>
-     * Verifies:
-     * <ul>
-     *   <li>Successful borrowing and returning cycles</li>
-     *   <li>Availability state transitions</li>
-     *   <li>Exception thrown when returning an already available book</li>
-     * </ul>
-     * </p>
-     */
-    @Test
-    void testBorrowAndReturnBookComprehensive() {
-        assertTrue(b3.borrow(), "First borrow should succeed");
-        assertFalse(b3.isAvailable(), "Book should be unavailable after borrow");
-
-        assertFalse(b3.borrow(), "Second borrow should fail when already borrowed");
-
-        b3.returnBook();
-        assertTrue(b3.isAvailable(), "Book should be available after return");
-
-        assertTrue(b3.borrow(), "Borrow after return should succeed");
-        assertFalse(b3.isAvailable(), "Book unavailable again after borrow");
-
-        b3.returnBook();
-        assertTrue(b3.isAvailable(), "Book available after final return");
-
-        Exception exception = assertThrows(IllegalStateException.class, () -> b3.returnBook(),
-                "Returning an already available book should throw exception");
-        assertEquals("Cannot return a book that is already available.", exception.getMessage());
-    }
-
-    /**
-     * Tests the {@link Book#toString()} method.
-     * <p>
-     * Ensures correct string representation for both available and borrowed states.
-     * </p>
-     */
-    @Test
-    void testToString() {
-        assertEquals("Python Intro — Alice (ISBN: 457) [AVAILABLE]", b3.toString(),
-                "toString should show AVAILABLE");
-
-        b3.borrow();
-        assertEquals("Python Intro — Alice (ISBN: 457) [BORROWED]", b3.toString(),
-                "toString should show BORROWED");
-    }
-
-    /**
-     * Tests {@link Book} constructor validation.
-     * <p>
-     * Ensures that invalid arguments (null or empty values)
-     * cause {@link IllegalArgumentException} to be thrown.
+     * Verifies that creating a Book with null or empty ISBN, title, or author
+     * throws IllegalArgumentException.
      * </p>
      */
     @Test
@@ -131,32 +75,82 @@ class BookTest {
     }
 
     /**
-     * Tests the {@link Book#equals(Object)} and {@link Book#hashCode()} methods.
+     * Test setters for title and author.
      * <p>
-     * Ensures equality is based solely on ISBN and that hash codes are consistent.
+     * Ensures setters correctly update values and throw exceptions for invalid input.
+     * </p>
+     */
+    @Test
+    void testSetters() {
+        b1.setTitle("Advanced Java");
+        b1.setAuthor("Jane Doe");
+        assertEquals("Advanced Java", b1.getTitle());
+        assertEquals("Jane Doe", b1.getAuthor());
+
+        assertThrows(IllegalArgumentException.class, () -> b1.setTitle(""));
+        assertThrows(IllegalArgumentException.class, () -> b1.setAuthor(null));
+    }
+
+    /**
+     * Test borrow and return behavior.
+     * <p>
+     * Ensures borrow() marks the book unavailable, returns false if already borrowed,
+     * and returnItem() marks it available and returns false if already available.
+     * </p>
+     */
+    @Test
+    void testBorrowAndReturnFlow() {
+        assertTrue(b3.borrow());
+        assertFalse(b3.isAvailable());
+        assertFalse(b3.borrow());
+
+        assertTrue(b3.returnItem());
+        assertTrue(b3.isAvailable());
+        assertFalse(b3.returnItem());
+    }
+
+    /**
+     * Test equals and hashCode.
+     * <p>
+     * Verifies that books with the same ISBN are considered equal
+     * and produce the same hash code, while books with different ISBNs are not.
      * </p>
      */
     @Test
     void testEqualsAndHashCode() {
-        assertTrue(b1.equals(b1), "Book equals itself");
-        assertTrue(b1.equals(b2), "Books with same ISBN are equal");
-        assertFalse(b1.equals(b3), "Books with different ISBN are not equal");
-        assertFalse(b1.equals(null), "Book does not equal null");
-        assertFalse(b1.equals("string"), "Book does not equal object of different type");
-        assertEquals(b1.hashCode(), b2.hashCode(), "Hash codes are same for same ISBN");
-        assertNotEquals(b1.hashCode(), b3.hashCode(), "Hash codes differ for different ISBNs");
+        assertEquals(b1, b2, "Books with same ISBN should be equal");
+        assertNotEquals(b1, b3, "Books with different ISBN should not be equal");
+        assertNotEquals(b1, null);
+        assertNotEquals(b1, "string");
+
+        assertEquals(b1.hashCode(), b2.hashCode());
+        assertNotEquals(b1.hashCode(), b3.hashCode());
     }
 
     /**
-     * Tests thread-safety of {@link Book#borrow()} method.
+     * Test string representation.
      * <p>
-     * Ensures that only one thread can successfully borrow a book at a time.
+     * Ensures toString shows correct title, author, ISBN, and availability status.
+     * </p>
+     */
+    @Test
+    void testToString() {
+        assertEquals("Python Intro — Alice (ISBN: 457) [AVAILABLE]", b3.toString());
+        b3.borrow();
+        assertEquals("Python Intro — Alice (ISBN: 457) [BORROWED]", b3.toString());
+    }
+
+    /**
+     * Test thread safety of borrow().
+     * <p>
+     * Runs concurrent borrow attempts and verifies only one succeeds,
+     * ensuring proper synchronization.
      * </p>
      */
     @Test
     void testBorrowThreadSafety() throws InterruptedException {
         Book book = new Book("999", "Concurrency", "Thread Guru");
-        Runnable borrowTask = () -> book.borrow();
+        Runnable borrowTask = book::borrow;
 
         Thread t1 = new Thread(borrowTask);
         Thread t2 = new Thread(borrowTask);
@@ -169,10 +163,10 @@ class BookTest {
     }
 
     /**
-     * Tests thread-safety of {@link Book#returnBook()} method.
+     * Test thread safety of returnItem().
      * <p>
-     * Ensures that concurrent returns are safely handled without
-     * corrupting the book’s availability state.
+     * Runs concurrent return attempts and verifies book becomes available
+     * without exceptions, ensuring proper synchronization.
      * </p>
      */
     @Test
@@ -180,13 +174,7 @@ class BookTest {
         Book book = new Book("1000", "Threads", "Java Master");
         book.borrow();
 
-        Runnable returnTask = () -> {
-            try {
-                book.returnBook();
-            } catch (IllegalStateException ignored) {
-                // expected if already returned
-            }
-        };
+        Runnable returnTask = book::returnItem;
 
         Thread t1 = new Thread(returnTask);
         Thread t2 = new Thread(returnTask);
@@ -197,5 +185,24 @@ class BookTest {
 
         assertTrue(book.isAvailable(), "Book should be available after concurrent returns");
     }
+
+    /**
+     * Test compliance with LibraryItem interface.
+     * <p>
+     * Verifies that borrow() and returnItem() behave correctly
+     * when accessed via a LibraryItem reference.
+     * </p>
+     */
+    @Test
+    void testLibraryItemInterfaceCompliance() {
+        LibraryItem libItem = b1;
+        assertTrue(libItem.isAvailable());
+        assertTrue(libItem.borrow());
+        assertFalse(libItem.isAvailable());
+        assertTrue(libItem.returnItem());
+        assertTrue(libItem.isAvailable());
+    }
 }
+
+
 

@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
  * Users are considered equal if they have the same unique ID, regardless of username, email, or role.
  * </p>
  * 
+ * @see Role 
  * @author Eman
  */
 public class User {
@@ -99,6 +100,22 @@ public class User {
     public String getEmail() {
         return email;
     }
+    /**
+     * Sets a new username for the user.
+     * <p>
+     * The username is trimmed of leading and trailing spaces and must not be {@code null} or empty.
+     * </p>
+     *
+     * @param newUsername the new username to set
+     * @throws IllegalArgumentException if {@code newUsername} is {@code null} or empty after trimming
+     */
+    public void setUsername(String newUsername) {
+        if (newUsername == null || newUsername.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty.");
+        }
+        this.username = newUsername.trim();
+    }
+
 
     /**
      * Sets the user's email after validating format.
@@ -168,9 +185,9 @@ public class User {
         fineBalance = fineBalance.add(amount);
     }
 
-    /** Checks if the user can borrow (no fines). */
-    public boolean canBorrow() {
-        return fineBalance.compareTo(BigDecimal.ZERO) == 0;
+    /** Returns true if the user has unpaid fines. */
+    public boolean hasOutstandingFine() {
+        return fineBalance.compareTo(BigDecimal.ZERO) > 0;
     }
 
     /**

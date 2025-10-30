@@ -1,188 +1,139 @@
 package librarySE;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Represents a library that manages books, users, and borrowing operations.
- * <p>
- * This class handles adding books, borrowing and returning them,
- * tracking overdue records, and applying fines automatically.
- * </p>
+ * Represents a library that manages library items, users, and borrowing operations.
+ * Supports borrowing, returning, fine application, overdue notifications, and search.
+ * 
  * 
  * @author Malak
  */
 public class Library {
 
-    /** The list of all books stored in the library. */
-    private List<Book> books;
+    /** All library items stored (books, CDs, journals, etc.) */
+    private List<LibraryItem> items;
 
-    /** The list of all borrow records in the library. */
+    /** All borrow records */
     private List<BorrowRecord> borrowRecords;
 
-    /**
-     * Constructs an empty Library instance with initialized book and record lists.
-     */
     public Library() {
-        books = new ArrayList<>();
+        items = new ArrayList<>();
         borrowRecords = new ArrayList<>();
     }
 
-    /**
-     * Adds a new book to the library (only admins are allowed).
-     *
-     * @param book the book to be added (must not be null)
-     * @param user the user attempting to add the book (must be admin)
-     * @throws IllegalArgumentException if book or user is null, 
-     *                                  or if a book with the same ISBN already exists,
-     *                                  or if the user is not an admin
-     */
-    public void addBook(Book book, User user) {
-        if (book == null)
-            throw new IllegalArgumentException("Book cannot be null");
-        if (user == null)
-            throw new IllegalArgumentException("User cannot be null");
+    /** Add a new library item (only admins allowed) */
+    public void addItem(LibraryItem item, User user) {
+        if (item == null || user == null)
+            throw new IllegalArgumentException("Item and User cannot be null.");
         if (!user.isAdmin())
-            throw new IllegalArgumentException("Only admins can add books!");
+            throw new IllegalArgumentException("Only admins can add items.");
 
-        boolean exists = books.stream()
-                              .anyMatch(b -> b.getIsbn().equals(book.getIsbn()));
-        if (exists)
-            throw new IllegalArgumentException(
-                "Book with ISBN " + book.getIsbn() + " already exists!"
-            );
-
-        books.add(book);
+        items.add(item);
     }
 
-    /**
-     * Allows a user to borrow a book if it is available and the user has no unpaid fines.
-     *
-     * @param user the user borrowing the book
-     * @param isbn the ISBN of the book to borrow
-     * @return true if borrowing succeeded, false if the book is already borrowed
-     * @throws IllegalArgumentException if user or ISBN is null, or book is not found
-     * @throws IllegalStateException if the user has unpaid fines
-     */
-    public boolean borrowBook(User user, String isbn) {
-        if (user == null || isbn == null)
-            throw new IllegalArgumentException("User and ISBN cannot be null.");
+    /** Borrow a library item */
+    public boolean borrowItem(User user, String title, FineStrategy fineStrategy) {
+        if (user == null || title == null || fineStrategy == null)
+            throw new IllegalArgumentException("Arguments cannot be null.");
 
-        applyOverdueFines(LocalDate.now());
-
-        if (!user.canBorrow())
-            throw new IllegalStateException("User has unpaid fines and cannot borrow books.");
-
-        Book book = books.stream()
-                .filter(b -> b.getIsbn().equals(isbn))
+        applyOverdueFines(LocalDate.now());//Apply late fines before borrowing
+        
+        //Ensure the user does not have fines or overdue items
+        if (user.hasOutstandingFine())
+            throw new IllegalStateException("User has unpaid fines or overdue items, cannot borrow.");
+        //Search for available item
+        LibraryItem item = items.stream()
+                .filter(i -> i.getTitle().equalsIgnoreCase(title) && i.isAvailable())
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Book not found."));
-
-        if (!book.borrow())
+                .orElseThrow(() -> new IllegalArgumentException("Item not found or unavailable."));
+        //Update loan status
+        if (!item.borrow())
             return false;
-
-        BorrowRecord record = new BorrowRecord(user, book);
+        //Create a new loan record
+        BorrowRecord record = new BorrowRecord(user, item, fineStrategy);
         borrowRecords.add(record);
         return true;
     }
 
-    /**
-     * Marks a borrowed book as returned.
-     *
-     * @param user the user returning the book
-     * @param isbn the ISBN of the returned book
-     * @throws IllegalArgumentException if no active borrow record is found
-     */
-    public void returnBook(User user, String isbn) {
-        applyOverdueFines(LocalDate.now());
+    /** Return a borrowed library item */
+    public void returnItem(User user, LibraryItem item) {
+        if (user == null || item == null)
+            throw new IllegalArgumentException("User and Item cannot be null.");
 
         BorrowRecord record = borrowRecords.stream()
-                .filter(r -> r.getBook().getIsbn().equals(isbn) && r.getUser().equals(user) && !r.isReturned())
+                .filter(r -> r.getItem().equals(item) && r.getUser().equals(user) && !r.isReturned())
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No active borrowing found."));
 
         record.markReturned();
-        record.getBook().returnBook();
     }
 
-    /**
-     * Applies overdue fines for all users with overdue borrow records.
-     *
-     * @param today the date used to check for overdue status
-     */
-    public void applyOverdueFines(LocalDate today) {
+    /** Apply overdue fines to all borrow records */
+    public void applyOverdueFines(LocalDate date) {
+    	/*Passes through each borrow record.
+         If the item is overdue (isOverdue) → applyFineToUser.*/
         for (BorrowRecord record : borrowRecords) {
-            if (record.isOverdue(today)) {
-                BigDecimal fineAmount = record.getFine(today);
-                if (fineAmount.compareTo(BigDecimal.ZERO) > 0) {
-                    BigDecimal currentFine = record.getUser().getFineBalance();
-                    BigDecimal newFine = fineAmount.max(currentFine);
-                    record.getUser().addFine(newFine.subtract(currentFine));
-                }
+            if (record.isOverdue(date)) {
+                record.applyFineToUser(date);
             }
         }
     }
 
-    /**
-     * Returns a list of all overdue borrow records as of the given date.
-     *
-     * @param today the date to check for overdue records
-     * @return a list of overdue borrow records
-     */
-    public List<BorrowRecord> getOverdueBooks(LocalDate today) {
-        applyOverdueFines(today);
+    /** Get all overdue borrow records */
+    public List<BorrowRecord> getOverdueItems(LocalDate date) {
+        applyOverdueFines(date);
         return borrowRecords.stream()
-                .filter(r -> r.isOverdue(today))
+                .filter(r -> r.isOverdue(date))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Searches for books in the library by title, author, or ISBN (case-insensitive).
-     *
-     * @param keyword the search keyword
-     * @return a list of books that match the search keyword
-     * @throws IllegalArgumentException if the keyword is null
-     */
-    public List<Book> searchBook(String keyword) {
+    /** Search books by title, author, or ISBN */
+    public List<Book> searchBooks(String keyword) {
         if (keyword == null)
-            throw new IllegalArgumentException("Search keyword cannot be null");
-        String lowerKeyword = keyword.toLowerCase();
-        return books.stream()
-                .filter(b -> b.getTitle().toLowerCase().contains(lowerKeyword)
-                        || b.getAuthor().toLowerCase().contains(lowerKeyword)
-                        || b.getIsbn().toLowerCase().contains(lowerKeyword))
+            throw new IllegalArgumentException("Keyword cannot be null.");
+        String lower = keyword.toLowerCase();
+
+        return items.stream()
+                .filter(i -> i instanceof Book)  
+                .map(i -> (Book) i)           
+                .filter(b -> b.getTitle().toLowerCase().contains(lower)
+                        || b.getAuthor().toLowerCase().contains(lower)
+                        || b.getIsbn().toLowerCase().contains(lower))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Returns the total number of books stored in the library.
-     *
-     * @return the number of books in the library
-     */
-    public int getBookCount() {
-        return books.size();
+    /** Get all library items */
+    public List<LibraryItem> getAllItems() {
+        return new ArrayList<>(items);
     }
 
-    /**
-     * Returns a copy of all books currently stored in the library.
-     *
-     * @return a list of all books
-     */
-    public List<Book> getAllBooks() {
-        return new ArrayList<>(books);
-    }
-
-    /**
-     * Returns a copy of all borrow records currently stored in the library.
-     * Fines are updated before returning the list.
-     *
-     * @return a list of all borrow records
-     */
+    /** Get all borrow records */
     public List<BorrowRecord> getAllBorrowRecords() {
         applyOverdueFines(LocalDate.now());
         return new ArrayList<>(borrowRecords);
+    }
+
+    /**
+     * Sends reminder notifications to users with overdue items.
+     * Works with any Observer implementation (mock or real email).
+     *
+     * @param notifier the observer responsible for sending notifications
+     */
+    public void sendReminders(Observer notifier) {
+        if (notifier == null) throw new IllegalArgumentException("Notifier cannot be null");
+
+        List<BorrowRecord> overdueRecords = getOverdueItems(LocalDate.now());
+
+        Map<User, List<BorrowRecord>> byUser = overdueRecords.stream()
+                .collect(Collectors.groupingBy(BorrowRecord::getUser));
+
+        for (User user : byUser.keySet()) {
+            int count = byUser.get(user).size();
+            String message = "You have " + count + " overdue book(s).";
+            notifier.notify(user, message);
+        }
     }
 }
