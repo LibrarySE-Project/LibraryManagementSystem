@@ -29,7 +29,7 @@ class UserTest {
         adminUser = null;
     }
 
-    /** ✅ Basic constructor and getters */
+    /** Basic constructor and getters */
     @Test
     void testConstructorAndGetters() {
         assertEquals("user1", normalUser.getUsername());
@@ -38,7 +38,7 @@ class UserTest {
         assertEquals(0, normalUser.getFineBalance().compareTo(BigDecimal.ZERO));
     }
 
-    /** ✅ Constructor throws on null or invalid parameters */
+    /** Constructor throws on null or invalid parameters */
     @Test
     void testConstructorWithInvalidParameters() {
         assertThrows(IllegalArgumentException.class, () -> new User(null, Role.USER, "pass", "mail@x.com"));
@@ -47,7 +47,7 @@ class UserTest {
         assertThrows(IllegalArgumentException.class, () -> new User("user", Role.USER, "pass", null));
     }
 
-    /** ✅ Email validation formats */
+    /** Email validation formats */
     @Test
     void testEmailValidationFormats() {
         assertDoesNotThrow(() -> new User("a", Role.USER, "pass", "user@najah.edu"));
@@ -56,21 +56,21 @@ class UserTest {
         assertThrows(IllegalArgumentException.class, () -> new User("a", Role.USER, "pass", "user@invalid.xyz"));
     }
 
-    /** ✅ setEmail trims and lowercases properly */
+    /** setEmail trims and lowercases properly */
     @Test
     void testSetEmailTrimmingAndLowercase() {
         normalUser.setEmail("  USER2@GMAIL.COM ");
         assertEquals("user2@gmail.com", normalUser.getEmail());
     }
 
-    /** ✅ setEmail invalid formats throw exception */
+    /** setEmail invalid formats throw exception */
     @Test
     void testSetEmailInvalidThrows() {
         assertThrows(IllegalArgumentException.class, () -> normalUser.setEmail("invalid"));
         assertThrows(IllegalArgumentException.class, () -> normalUser.setEmail(null));
     }
 
-    /** ✅ setUsername validation */
+    /** setUsername validation */
     @Test
     void testSetUsernameValidation() {
         normalUser.setUsername("  newName ");
@@ -79,14 +79,14 @@ class UserTest {
         assertThrows(IllegalArgumentException.class, () -> normalUser.setUsername(null));
     }
 
-    /** ✅ Role check */
+    /** Role check */
     @Test
     void testIsAdminCheck() {
         assertTrue(adminUser.isAdmin());
         assertFalse(normalUser.isAdmin());
     }
 
-    /** ✅ Password verification */
+    /** Password verification */
     @Test
     void testPasswordVerification() {
         assertTrue(adminUser.checkPassword("adminPass"));
@@ -94,7 +94,7 @@ class UserTest {
         assertFalse(adminUser.checkPassword(null));
     }
 
-    /** ✅ Change password success and failure */
+    /** Change password success and failure */
     @Test
     void testChangePassword() {
         assertTrue(normalUser.changePassword("userPass", "newPass123"));
@@ -109,7 +109,15 @@ class UserTest {
         assertThrows(IllegalArgumentException.class, () -> normalUser.changePassword("newPass123", "123"));
     }
 
-    /** ✅ Fine management (add, pay, check outstanding) */
+    /** Change password with null inputs (edge cases) */
+    @Test
+    void testChangePasswordNullInputs() {
+        assertFalse(normalUser.changePassword(null, "newPass"));
+        assertFalse(normalUser.changePassword("userPass", null));
+        assertFalse(normalUser.changePassword(null, null));
+    }
+
+    /** Fine management (add, pay, check outstanding) */
     @Test
     void testFineOperations() {
         normalUser.addFine(new BigDecimal("5"));
@@ -124,19 +132,19 @@ class UserTest {
         assertFalse(normalUser.hasOutstandingFine());
     }
 
-    /** ❌ Add fine with negative amount */
+    /** Add fine with negative amount */
     @Test
     void testAddFineNegativeThrows() {
         assertThrows(IllegalArgumentException.class, () -> normalUser.addFine(new BigDecimal("-1")));
     }
 
-    /** ❌ Add fine with null → NPE */
+    /** Add fine with null → NPE */
     @Test
     void testAddFineNullThrows() {
         assertThrows(NullPointerException.class, () -> normalUser.addFine(null));
     }
 
-    /** ❌ Pay fine invalid values */
+    /** Pay fine invalid values */
     @Test
     void testPayFineInvalidValues() {
         normalUser.addFine(new BigDecimal("10"));
@@ -144,7 +152,7 @@ class UserTest {
         assertThrows(IllegalArgumentException.class, () -> normalUser.payFine(new BigDecimal("15")));
     }
 
-    /** ✅ Pay zero fine does nothing */
+    /** Pay zero fine does nothing */
     @Test
     void testPayFineZero() {
         normalUser.addFine(new BigDecimal("5"));
@@ -152,7 +160,7 @@ class UserTest {
         assertEquals(0, normalUser.getFineBalance().compareTo(new BigDecimal("5")));
     }
 
-    /** ✅ Equality & hashCode based on ID only */
+    /** Equality & hashCode based on ID only */
     @Test
     void testEqualityAndHashCode() {
         User u1 = new User("x", Role.USER, "p", "x@gmail.com");
@@ -162,7 +170,7 @@ class UserTest {
         assertEquals(u1, u1);
     }
 
-    /** ✅ toString includes username, role, and email */
+    /** toString includes username, role, and email */
     @Test
     void testToStringIncludesData() {
         String s = adminUser.toString();
@@ -171,7 +179,7 @@ class UserTest {
         assertTrue(s.contains("najah.edu"));
     }
 
-    /** ✅ Password hashing with invalid algorithm triggers RuntimeException */
+    /** Password hashing with invalid algorithm triggers RuntimeException */
     @Test
     void testInvalidHashAlgorithmThrows() {
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
@@ -181,6 +189,7 @@ class UserTest {
         assertTrue(ex.getCause() instanceof NoSuchAlgorithmException);
     }
 }
+
 
 
 
