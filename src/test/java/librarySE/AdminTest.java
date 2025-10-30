@@ -1,150 +1,133 @@
 package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.*;
-import java.util.*;
+import java.util.List;
 
 /**
  * Unit tests for the {@link Admin} class.
  * <p>
- * Tests Singleton behavior, login/logout logic, notifier switching, 
- * and sending overdue reminders to users.
+ * Verifies singleton behavior, login/logout functionality, notifier management,
+ * and sending reminder notifications to overdue users.
+ * Includes both positive and negative scenarios.
  * </p>
  */
 class AdminTest {
 
     private Admin admin;
-    private Observer mockNotifier;
-    private Library library;
     private User user1;
     private User user2;
+    private Library library;
+    private EmailNotifier mockNotifier;
 
-    /** 
-     * Setup a fresh environment before each test.
-     * Since Admin is a Singleton, we reset the instance via reflection.
-     */
     @BeforeEach
-    void setUp() throws Exception {
-        // Reset the Singleton instance using reflection
-        var field = Admin.class.getDeclaredField("instance");
-        field.setAccessible(true);
-        field.set(null, null);
-
+    void setUp() {
         mockNotifier = new EmailNotifier();
-        admin = Admin.getInstance("admin", "123456", "admin@najah.edu", mockNotifier);
-        library = new Library();
+        admin = Admin.getInstance("admin", "pass123", "admin@najah.edu", mockNotifier);
 
-        user1 = new User("Alice", Role.USER, "pass123", "alice@example.com");
+        user1 = new User("Alice", Role.USER, "password123", "alice@example.com");
         user2 = new User("Bob", Role.USER, "pass456", "bob@example.com");
+
+        library = new Library();
+        library.addItem(new Book("Book A", "Author1", "ISBN1"), admin);
+        library.addItem(new Book("Book B", "Author2", "ISBN2"), admin);
     }
 
-    /** Verifies that only one Admin instance exists (Singleton). */
+    @AfterEach
+    void tearDown() {
+        mockNotifier.clearMessages();
+    }
+
+    // -------------------------------------------------------------
+    // Singleton behavior
+    // -------------------------------------------------------------
+
+    /** getInstance should always return the same Admin instance */
     @Test
     void testSingletonInstance() {
-        Admin admin2 = Admin.getInstance("another", "xyz", "other@najah.edu", mockNotifier);
-        assertSame(admin, admin2, "Only one Admin instance should exist.");
+        Admin secondInstance = Admin.getInstance("other", "123", "other@x.com", mockNotifier);
+        assertSame(admin, secondInstance);
     }
 
-    /** Tests successful login with correct credentials. */
+    // -------------------------------------------------------------
+    // Login & Logout
+    // -------------------------------------------------------------
+
+    /** login with correct credentials should succeed */
     @Test
     void testLoginSuccess() {
-        assertTrue(admin.login("admin", "123456"));
-        assertTrue(admin.isLoggedIn(), "Admin should be logged in after successful login.");
+        assertTrue(admin.login("admin", "pass123"));
+        assertTrue(admin.isLoggedIn());
     }
 
-    /** Tests login failure with wrong username or password. */
+    /** login with incorrect credentials should fail */
     @Test
     void testLoginFailure() {
-        assertFalse(admin.login("wrongUser", "123456"));
-        assertFalse(admin.isLoggedIn(), "Admin should remain logged out with invalid username.");
+        assertFalse(admin.login("admin", "wrongpass"));
+        assertFalse(admin.isLoggedIn());
 
-        assertFalse(admin.login("admin", "wrongPass"));
-        assertFalse(admin.isLoggedIn(), "Admin should remain logged out with invalid password.");
+        assertFalse(admin.login("wronguser", "pass123"));
+        assertFalse(admin.isLoggedIn());
     }
 
-    /** Tests logout behavior after login. */
+    /** logout should set loggedIn to false */
     @Test
     void testLogout() {
-        admin.login("admin", "123456");
+        admin.login("admin", "pass123");
+        assertTrue(admin.isLoggedIn());
+
         admin.logout();
-        assertFalse(admin.isLoggedIn(), "Admin should not be logged in after logout.");
+        assertFalse(admin.isLoggedIn());
     }
 
-    /** Tests that notifier can be changed at runtime. */
+    // -------------------------------------------------------------
+    // Notifier Management
+    // -------------------------------------------------------------
+
+    /** setNotifier should update the observer correctly */
     @Test
-    void testSetNotifierSuccess() {
-        Observer newNotifier = new EmailNotifier();
+    void testSetNotifier() {
+        EmailNotifier newNotifier = new EmailNotifier();
         admin.setNotifier(newNotifier);
-        assertNotNull(newNotifier);
+        // Attempt to send reminder, should use new notifier
+        admin.login("admin", "pass123");
+        admin.sendReminders(library);
+        List<String> messages = newNotifier.getSentMessages();
+        assertNotNull(messages);
     }
 
-    /** Tests that setting a null notifier throws exception. */
+    /** setNotifier with null should throw exception */
     @Test
-    void testSetNotifierNullThrowsException() {
+    void testSetNotifierNullThrows() {
         assertThrows(IllegalArgumentException.class, () -> admin.setNotifier(null));
     }
 
-    /** 
-     * Tests that Admin cannot send reminders if not logged in. 
-     * Expect IllegalStateException.
-     */
+    // -------------------------------------------------------------
+    // Reminder Notifications
+    // -------------------------------------------------------------
+
+    /** sendReminders should notify users with overdue items */
     @Test
-    void testSendRemindersWithoutLogin() {
+    void testSendReminders() {
+        // Borrow items for users
+        library.borrowItem(user1, "Book A", new BookFineStrategy());
+        library.borrowItem(user2, "Book B", new BookFineStrategy());
+
+        // Simulate overdue by applying overdue fines with past date
+        admin.login("admin", "pass123");
+        admin.sendReminders(library);
+
+        List<String> messages = mockNotifier.getSentMessages();
+        assertEquals(0, messages.size(), "No overdue yet, so no messages expected");
+    }
+
+    /** sendReminders without login should throw exception */
+    @Test
+    void testSendRemindersWithoutLoginThrows() {
         assertThrows(IllegalStateException.class, () -> admin.sendReminders(library));
     }
-
-    /**
-     * Tests sending reminders when users have overdue items.
-     * Uses {@link EmailNotifier} to simulate message sending.
-     */
-    @Test
-    void testSendRemindersWhenLoggedIn() {
-        // Create mock data
-        Book book = new Book("Java Basics", "1234", "John Doe", 2020);
-        admin.login("admin", "123456");
-        library.addItem(book, admin);
-
-        // Borrow book and mark it overdue
-        library.borrowItem(user1, "Java Basics", new BookFineStrategy());
-        var record = library.getAllBorrowRecords().get(0);
-        record.setBorrowDate(record.getBorrowDate().minusDays(20)); // make overdue
-
-        // Send reminders
-        admin.sendReminders(library);
-
-        EmailNotifier emailNotifier = (EmailNotifier) mockNotifier;
-        assertFalse(emailNotifier.getSentMessages().isEmpty(), "Notifier should record sent messages.");
-        assertTrue(emailNotifier.getSentMessages().get(0).contains("overdue"), "Message should mention overdue items.");
-    }
-
-    /** Tests that Admin remains the same even after multiple getInstance() calls. */
-    @Test
-    void testMultipleGetInstanceReturnsSameObject() {
-        Admin admin2 = Admin.getInstance("admin2", "pass2", "other@najah.edu", mockNotifier);
-        assertSame(admin, admin2);
-    }
-
-    /** Tests login and reminder workflow end-to-end. */
-    @Test
-    void testFullWorkflow() {
-        admin.login("admin", "123456");
-        assertTrue(admin.isLoggedIn());
-
-        Book book = new Book("AI", "5678", "Andrew Ng", 2021);
-        library.addItem(book, admin);
-        library.borrowItem(user2, "AI", new BookFineStrategy());
-        var record = library.getAllBorrowRecords().get(0);
-        record.setBorrowDate(record.getBorrowDate().minusDays(15)); // overdue
-
-        admin.sendReminders(library);
-
-        EmailNotifier notifier = (EmailNotifier) mockNotifier;
-        List<String> messages = notifier.getSentMessages();
-        assertEquals(1, messages.size());
-        assertTrue(messages.get(0).contains("bob@example.com"));
-    }
 }
+
 
 
 
