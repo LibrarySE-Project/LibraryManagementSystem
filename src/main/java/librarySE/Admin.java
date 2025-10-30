@@ -19,6 +19,7 @@ package librarySE;
  * @see SmtpEmailObserver
  * @see SmtpEmailService
  * @see Library
+ * @author Eman
  */
 public class Admin extends User {
 

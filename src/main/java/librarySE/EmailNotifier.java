@@ -18,7 +18,7 @@ import java.util.List;
  * 
  * @see  Observer 
  * @see User
- * @author Malak
+ * @author Eman
  */
 public class EmailNotifier implements Observer {
 
