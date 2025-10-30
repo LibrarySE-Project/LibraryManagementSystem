@@ -16,7 +16,7 @@ import java.util.logging.Logger;
  * </ul>
  * </p>
  *  
- * @author Malak
+ * @author Eman
  */
 public class SmtpEmailService implements EmailService {
 

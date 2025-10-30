@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit;
  * @see LibraryItem
  * @see FineStrategy
 
- * @author Malak
+ * @author Eman
  */
 public class BorrowRecord {
 
