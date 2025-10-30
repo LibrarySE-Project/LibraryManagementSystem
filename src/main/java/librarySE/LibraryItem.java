@@ -58,5 +58,11 @@ public interface LibraryItem {
      *         {@code false} if it was already borrowed
      */
     boolean borrow();
+    /**
+     * Returns the type of material for this library item (e.g., BOOK, CD, JOURNAL).
+     *
+     * @return the {@link MaterialType} of the item
+     */
+	MaterialType getMaterialType();
 }
 

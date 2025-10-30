@@ -143,5 +143,19 @@ public class Book implements LibraryItem {
                     title, author, isbn, available ? "[AVAILABLE]" : "[BORROWED]");
         }
     }
+    
+    /**
+     * Returns the material type of this item.
+     * <p>
+     * This implementation always returns {@link MaterialType#BOOK} because
+     * this class represents a book.
+     * </p>
+     *
+     * @return {@link MaterialType#BOOK}
+     */
+	@Override
+	public MaterialType getMaterialType() {
+		return MaterialType.BOOK;
+	}
 }
 
