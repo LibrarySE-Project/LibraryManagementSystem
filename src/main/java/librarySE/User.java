@@ -3,6 +3,8 @@ package librarySE;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -10,25 +12,29 @@ import java.util.regex.Pattern;
 /**
  * Represents a system user within the library system.
  * <p>
- * A user can either be a regular user or an administrator, distinguished by their role.
- * Each user has a unique ID, username, role, email, hashed password, and fine balance.
+ * A user can be either a regular user or an administrator, distinguished by their {@link Role}.
+ * Each user has a unique ID, username, role, email, hashed password, fine balance,
+ * and a personal list of {@link BorrowRecord} representing items they have borrowed.
  * </p>
  * 
  * <p>
  * This class provides functionality for:
  * <ul>
- *     <li>Password verification and change (with minimum length check).</li>
- *     <li>Fine management (adding and paying fines).</li>
- *     <li>Email validation.</li>
- *     <li>Logical equality based on unique user ID.</li>
+ *     <li>Password verification, hashing, and change (with minimum length check).</li>
+ *     <li>Fine management: adding fines, paying fines, and checking outstanding fines.</li>
+ *     <li>Email validation with regex pattern.</li>
+ *     <li>Borrow record management: adding and removing {@link BorrowRecord}.</li>
+ *     <li>Logical equality based on unique {@code userId}.</li>
  * </ul>
  * </p>
  * 
  * <p>
- * Users are considered equal if they have the same unique ID, regardless of username, email, or role.
+ * Users are considered equal if they have the same unique {@code userId}, regardless of
+ * username, email, or role. Hash code is consistent with equality.
  * </p>
  * 
- * @see Role 
+ * @see Role
+ * @see BorrowRecord
  * @author Eman
  */
 public class User {
@@ -50,6 +56,9 @@ public class User {
 
     /** The user's email address (lowercase, trimmed, must be valid). */
     private String email;
+    
+    /** List of borrow records associated with this user. */
+    private List<BorrowRecord> borrowRecords;
 
     /** Regular expression pattern for validating email addresses. */
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -59,8 +68,19 @@ public class User {
     /** Minimum password length when changing passwords. */
     private static final int MIN_PASSWORD_LENGTH = 6;
 
+    /** Constructs a default User with empty username/email and USER role. */
+    public User() {
+        this.userId = UUID.randomUUID().toString();
+        this.username = "";
+        this.email = "";
+        this.role = Role.USER; 
+        this.passwordHash = "";
+        this.fineBalance = BigDecimal.ZERO;
+        borrowRecords = new ArrayList<>();
+    }
+
     /**
-     * Constructs a new {@code User} with a unique ID.
+     * Constructs a new {@code User} with a unique ID and validated email.
      *
      * @param username the name identifying the user (must not be {@code null})
      * @param role the user's role ({@link Role#USER} or {@link Role#ADMIN}), must not be {@code null}
@@ -72,7 +92,7 @@ public class User {
         if (username == null || role == null || password == null || email == null) {
             throw new IllegalArgumentException("Username, role, password, and email cannot be null.");
         }
-
+        borrowRecords = new ArrayList<>();
         this.userId = UUID.randomUUID().toString();
         this.username = username.trim();
         this.role = role;
@@ -100,10 +120,26 @@ public class User {
     public String getEmail() {
         return email;
     }
+    
+    /** Returns the list of borrow records associated with this user. */
+    public List<BorrowRecord> getBorrowRecords() {
+        return borrowRecords;
+    }
+
+    /** Adds a borrow record to the user's personal list. */
+    public void addBorrowRecord(BorrowRecord record) {
+        borrowRecords.add(record);
+    }
+    
+    /** Removes a borrow record from the user's personal list. */
+    public void removeBorrowRecord(BorrowRecord record) {
+        borrowRecords.remove(record);
+    }
+
     /**
      * Sets a new username for the user.
      * <p>
-     * The username is trimmed of leading and trailing spaces and must not be {@code null} or empty.
+     * The username is trimmed and must not be {@code null} or empty.
      * </p>
      *
      * @param newUsername the new username to set
@@ -115,7 +151,6 @@ public class User {
         }
         this.username = newUsername.trim();
     }
-
 
     /**
      * Sets the user's email after validating format.
@@ -178,6 +213,7 @@ public class User {
      * Adds a fine to the user's balance.
      *
      * @param amount positive fine amount
+     * @throws IllegalArgumentException if amount is negative
      */
     public void addFine(BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) < 0)
@@ -194,6 +230,7 @@ public class User {
      * Pays a portion of the fine balance.
      *
      * @param amount positive amount not exceeding balance
+     * @throws IllegalArgumentException if amount negative or exceeds balance
      */
     public void payFine(BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) < 0)
@@ -247,4 +284,5 @@ public class User {
         return username + " (" + role + ") - " + email;
     }
 }
+
 
