@@ -7,26 +7,40 @@ import java.time.temporal.ChronoUnit;
 /**
  * Represents a single borrowing record in the library system.
  * <p>
- * Each record links a {@link User} with a {@link LibraryItem}, tracking the borrow date,
- * due date, and applicable fines for overdue items. This class implements the
- * Strategy Pattern for fine calculation using a {@link FineStrategy}.
+ * Each record links a {@link User} with a {@link LibraryItem}, tracking:
+ * <ul>
+ *     <li>The borrow date</li>
+ *     <li>The due date (automatically calculated based on the {@link FineStrategy} of the item)</li>
+ *     <li>Applicable fines for overdue items</li>
+ * </ul>
  * </p>
- * 
+ *
+ * <p>
+ * This class implements the Strategy Pattern for fine calculation using {@link FineStrategy}.
+ * Each material type (Book, CD, Journal, etc.) has its own borrow period defined in its strategy.
+ * The {@code dueDate} for a borrow record is automatically set to:
+ * <pre>
+ * borrowDate + fineStrategy.getBorrowPeriodDays()
+ * </pre>
+ * ensuring that different material types have their own return deadlines.
+ * </p>
+ *
  * <p>
  * The availability of the item is controlled via the {@link LibraryItem} interface.
  * An item is considered returned if {@link LibraryItem#isAvailable()} returns {@code true}.
  * </p>
- * 
+ *
  * <p>
  * All date calculations (borrow date, due date, return date) use {@link LocalDate} parameters.
  * This allows specifying a custom date for testing or simulation instead of relying on the current date.
  * </p>
- * 
+ *
  * @see User
  * @see LibraryItem
  * @see FineStrategy
  * @author Eman
  */
+
 public class BorrowRecord {
 
     /** The user who borrowed the item */
@@ -52,6 +66,9 @@ public class BorrowRecord {
     
     /** Indicates if the overdue fine has already been applied to the user to avoid double charging */
     private boolean fineApplied = false;
+    
+    /** Amount of fine already paid for this record */ 
+    private BigDecimal finePaid = BigDecimal.ZERO;
 
     /**
      * Constructs a borrowing record for a given user, item, fine strategy, and borrow date.
@@ -77,7 +94,6 @@ public class BorrowRecord {
         this.borrowDate = borrowDate;
         this.dueDate = borrowDate.plusDays(borrowPeriodDays);
         this.fine = BigDecimal.ZERO;
-        item.borrow();
     }
 
     /** Returns the user who borrowed the item */
@@ -91,6 +107,16 @@ public class BorrowRecord {
 
     /** Returns the due date for returning the item */
     public LocalDate getDueDate() { return dueDate; }
+    
+    /** Returns true if the fine has already been applied to the user */
+    public boolean isFineApplied() {
+        return fineApplied;
+    }
+
+    /** Sets whether the fine has been applied to the user */
+    public void setFineApplied(boolean fineApplied) {
+        this.fineApplied = fineApplied;
+    }
 
     /** Checks if the item has been returned */
     public boolean isReturned() { return item.isAvailable(); }
@@ -108,6 +134,47 @@ public class BorrowRecord {
     public BigDecimal getFine(LocalDate currentDate) {
         calculateFine(currentDate);
         return fine;
+    }
+    /**
+     * Returns the amount of fine already paid for this borrowing record.
+     *
+     * @return the paid fine as a {@link BigDecimal}, never {@code null}
+     */
+    public BigDecimal getFinePaid() {
+        return finePaid;
+    }
+
+    /**
+     * Sets the amount of fine paid for this borrowing record.
+     * <p>
+     * This method validates that the amount is non-null, non-negative, and does not exceed
+     * the total fine for this record.
+     * </p>
+     *
+     * @param amount the amount to mark as paid; must be non-null, ≥ 0, and ≤ {@link #fine}
+     * @throws IllegalArgumentException if {@code amount} is null, negative, or exceeds the total fine
+     */
+    public void setFinePaid(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Paid amount cannot be null or negative");
+        }
+        if (amount.compareTo(fine) > 0) {
+            throw new IllegalArgumentException("Paid amount cannot exceed fine");
+        }
+        this.finePaid = amount;
+    }
+
+    /**
+     * Returns the remaining unpaid fine for this borrowing record.
+     * <p>
+     * Computed as the total fine minus the amount already paid. This can be used
+     * to display outstanding fines for the user.
+     * </p>
+     *
+     * @return the remaining fine as a {@link BigDecimal}, never {@code null}
+     */
+    public BigDecimal getRemainingFine() {
+        return fine.subtract(finePaid);
     }
 
     /**

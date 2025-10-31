@@ -20,9 +20,7 @@ import java.math.BigDecimal;
  * for different item types without modifying the borrowing logic.
  * </p>
  * 
- * @see BookFineStrategy
- * @see CDFineStrategy
- * @see JournalFineStrategy
+ * 
  * @author Malak
  */
 public interface FineStrategy {

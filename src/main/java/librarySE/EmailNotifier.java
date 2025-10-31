@@ -16,7 +16,7 @@ import java.util.List;
  * Thread-safe: multiple threads can safely notify users simultaneously.
  * </p>
  * 
- * @see  Observer 
+ * @see Observer 
  * @see User
  * @author Eman
  */
@@ -38,7 +38,7 @@ public class EmailNotifier implements Observer {
     public void notify(User user, String message) {
         String record = "To: " + user.getEmail() + " | Message: " + message;
         sentMessages.add(record);
-        System.out.println(record); // for debugging
+        System.out.println(record); // for debugging / testing
     }
 
     /**
