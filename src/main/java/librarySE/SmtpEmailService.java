@@ -40,7 +40,6 @@ public class SmtpEmailService implements EmailService {
         props.put("mail.smtp.connectiontimeout", "5000");
         props.put("mail.smtp.timeout", "5000");
 
-        // إنشاء الجلسة
         this.session = Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
