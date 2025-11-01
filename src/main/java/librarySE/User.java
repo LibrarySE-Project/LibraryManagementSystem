@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
 public class User {
 
     /** Unique identifier for the user (UUID). */
-    private final String userId;
+    private final UUID id;
 
     /** The username of the user (trimmed, non-null). */
     private String username;
@@ -67,7 +67,7 @@ public class User {
 
     /** Constructs a default User with empty username/email and USER role. */
     public User() {
-        this.userId = UUID.randomUUID().toString();
+        this.id = UUID.randomUUID();
         this.username = "";
         this.email = "";
         this.role = Role.USER; 
@@ -88,7 +88,7 @@ public class User {
         if (username == null || role == null || password == null || email == null) {
             throw new IllegalArgumentException("Username, role, password, and email cannot be null.");
         }
-        this.userId = UUID.randomUUID().toString();
+        this.id = UUID.randomUUID();
         this.username = username.trim();
         this.role = role;
         this.passwordHash = hashPassword(password);
@@ -96,9 +96,11 @@ public class User {
         setEmail(email); // validation and lowercase handled in setEmail
     }
 
-    /** Returns the unique ID of the user. */
-    public String getUserId() {
-        return userId;
+    /**
+     * Returns the unique ID of the user.
+     * @return the id */
+    public UUID getId() {
+        return id;
     }
 
     /** Returns the username of the user. */
@@ -244,6 +246,7 @@ public class User {
         }
 
         fineBalance = fineBalance.subtract(amount);
+        if (fineBalance.compareTo(BigDecimal.ZERO) < 0) fineBalance = BigDecimal.ZERO;
     }
     /** Hashes a password using SHA-256. */
     private static String hashPassword(String password) {
@@ -274,13 +277,13 @@ public class User {
         if (this == obj) return true;
         if (!(obj instanceof User)) return false;
         User other = (User) obj;
-        return userId.equals(other.userId);
+        return id.equals(other.id);
     }
 
     /** Hash code based on unique userId for correct collection behavior. */
     @Override
     public int hashCode() {
-        return Objects.hash(userId);
+        return Objects.hash(id);
     }
 
     /** Returns formatted string: username (role) - email */

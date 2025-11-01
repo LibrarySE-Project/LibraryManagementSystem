@@ -6,32 +6,52 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
- * A production-ready implementation of {@link EmailService} that sends emails using SMTP.
+ * Implementation of {@link EmailService} using SMTP (Gmail by default).
+ * <p>
+ * Responsible for sending HTML emails from a specified sender account.
+ * Uses JavaMail API for SMTP communication.
+ * </p>
  * <p>
  * Features:
  * <ul>
- *   <li>Supports authentication and TLS/SSL</li>
- *   <li>Sends HTML emails with UTF-8 encoding</li>
- *   <li>Configurable connection and read timeouts</li>
+ *     <li>Validates sender email and password on construction.</li>
+ *     <li>Supports TLS encryption and authentication.</li>
+ *     <li>Logs success and failure messages using {@link Logger}.</li>
  * </ul>
  * </p>
- *  
- * @author Eman
+ * 
+ * 
+ * @author Malak
+ * @see EmailService
  */
 public class SmtpEmailService implements EmailService {
 
+    /** Logger for email sending events */
     private static final Logger LOGGER = Logger.getLogger(SmtpEmailService.class.getName());
+
+    /** Sender's email address */
     private final String senderEmail;
+
+    /** JavaMail session */
     private final Session session;
 
     /**
-     * Constructs an SMTP email service using Gmail's SMTP server by default.
+     * Constructs an SMTP email service using Gmail's SMTP server.
      *
-     * @param senderEmail    the email used to send messages
-     * @param senderPassword the app password for authentication
+     * @param senderEmail    the email used to send messages; must not be null or empty
+     * @param senderPassword the app password for authentication; must not be null or empty
+     * @throws IllegalArgumentException if {@code senderEmail} or {@code senderPassword} is null/empty
      */
     public SmtpEmailService(String senderEmail, String senderPassword) {
+        if (senderEmail == null || senderEmail.isBlank()) {
+            throw new IllegalArgumentException("Sender email cannot be null or empty.");
+        }
+        if (senderPassword == null || senderPassword.isBlank()) {
+            throw new IllegalArgumentException("Sender password cannot be null or empty.");
+        }
+
         this.senderEmail = senderEmail;
+
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -50,10 +70,14 @@ public class SmtpEmailService implements EmailService {
 
     /**
      * Sends an email to the specified recipient.
+     * <p>
+     * The email supports HTML content.
+     * </p>
      *
-     * @param to      recipient's email address
-     * @param subject subject line
-     * @param body    message body (supports HTML)
+     * @param to      recipient's email address; must be a valid format
+     * @param subject subject line; can be empty
+     * @param body    message body (supports HTML); can be empty
+     * @throws RuntimeException if sending the email fails
      */
     @Override
     public void sendEmail(String to, String subject, String body) {
