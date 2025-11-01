@@ -19,7 +19,7 @@ package librarySE;
  * of the email service.
  * </p>
  * 
- * @author Malak
+ * @author Eman
  */
 public class SmtpEmailObserver implements Observer {
 
