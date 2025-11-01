@@ -106,4 +106,3 @@ public class Admin extends User {
         return loggedIn;
     }
 }
-

@@ -1,6 +1,5 @@
 package librarySE;
 
-package librarySE;
 
 import java.math.BigDecimal;
 import java.util.List;
