@@ -21,7 +21,7 @@ import java.math.BigDecimal;
  * </p>
  * 
  * 
- * @author Eman
+ * @author Malak
  */
 public interface FineStrategy {
 

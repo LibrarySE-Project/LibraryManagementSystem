@@ -64,19 +64,5 @@ public interface LibraryItem {
      * @return the {@link MaterialType} of the item
      */
 	MaterialType getMaterialType();
-	
-	/**
-	 * Checks if the object matches the given keyword.
-	 * <p>
-	 * Typically used for searching or filtering. The implementation may vary depending
-	 * on the class, e.g., for {@link User} it could check username and email.
-	 * </p>
-	 *
-	 * @param keyword the keyword to match; must not be null
-	 * @return {@code true} if the object matches the keyword, {@code false} otherwise
-	 * @throws IllegalArgumentException if {@code keyword} is null
-	 */
-	boolean matchesKeyword(String keyword);
-
 }
 
