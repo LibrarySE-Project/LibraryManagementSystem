@@ -26,12 +26,23 @@ public class LoginManager {
 
     /**
      * Attempts to log in the administrator using the provided credentials.
+     * <p>
+     * Performs validation to ensure that the username and password are not null or empty.
+     * If either is invalid, an {@link IllegalArgumentException} is thrown.
+     * </p>
      * 
-     * @param user the username to log in
-     * @param userPass the password to log in
+     * @param user the username to log in; must not be null or empty
+     * @param userPass the password to log in; must not be null or empty
      * @return {@code true} if the login is successful, {@code false} otherwise
+     * @throws IllegalArgumentException if {@code user} or {@code userPass} is null or empty
      */
     public boolean login(String user, String userPass) {
+    	  if (user == null || user.trim().isEmpty()) {
+    	        throw new IllegalArgumentException("Username cannot be null or empty");
+    	    }
+    	    if (userPass == null || userPass.trim().isEmpty()) {
+    	        throw new IllegalArgumentException("Password cannot be null or empty");
+    	    }
         return admin.login(user, userPass);
     }
 

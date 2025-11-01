@@ -100,7 +100,12 @@ public class Book implements LibraryItem {
         }
     }
 
-    /** Attempts to borrow the book in a thread-safe manner. */
+    /** 
+     * Attempts to borrow the book in a thread-safe manner.
+     * 
+     * @return {@code true} if the book was successfully borrowed,
+     *         {@code false} if the book was already borrowed (not available)
+     */
     @Override
     public boolean borrow() {
         synchronized (this) {
@@ -110,7 +115,12 @@ public class Book implements LibraryItem {
         }
     }
 
-    /** Returns the book in a thread-safe manner. */
+    /** 
+     * Returns the book in a thread-safe manner.
+     * 
+     * @return {@code true} if the book was successfully returned,
+     *         {@code false} if the book was already available
+     */
     @Override
     public boolean returnItem() {
         synchronized (this) {

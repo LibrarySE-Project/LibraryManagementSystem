@@ -3,7 +3,6 @@ package librarySE;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -57,8 +56,6 @@ public class User {
     /** The user's email address (lowercase, trimmed, must be valid). */
     private String email;
     
-    /** List of borrow records associated with this user. */
-    private List<BorrowRecord> borrowRecords;
 
     /** Regular expression pattern for validating email addresses. */
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -76,7 +73,6 @@ public class User {
         this.role = Role.USER; 
         this.passwordHash = "";
         this.fineBalance = BigDecimal.ZERO;
-        borrowRecords = new ArrayList<>();
     }
 
     /**
@@ -92,7 +88,6 @@ public class User {
         if (username == null || role == null || password == null || email == null) {
             throw new IllegalArgumentException("Username, role, password, and email cannot be null.");
         }
-        borrowRecords = new ArrayList<>();
         this.userId = UUID.randomUUID().toString();
         this.username = username.trim();
         this.role = role;
@@ -121,21 +116,6 @@ public class User {
         return email;
     }
     
-    /** Returns the list of borrow records associated with this user. */
-    public List<BorrowRecord> getBorrowRecords() {
-        return borrowRecords;
-    }
-
-    /** Adds a borrow record to the user's personal list. */
-    public void addBorrowRecord(BorrowRecord record) {
-        borrowRecords.add(record);
-    }
-    
-    /** Removes a borrow record from the user's personal list. */
-    public void removeBorrowRecord(BorrowRecord record) {
-        borrowRecords.remove(record);
-    }
-
     /**
      * Sets a new username for the user.
      * <p>
@@ -225,21 +205,46 @@ public class User {
     public boolean hasOutstandingFine() {
         return fineBalance.compareTo(BigDecimal.ZERO) > 0;
     }
-
     /**
-     * Pays a portion of the fine balance.
+     * Pays a portion of the user's fines.
+     * <p>
+     * The payment is applied sequentially to the provided list of {@link BorrowRecord} instances,
+     * reducing the remaining unpaid fine for each record. After applying the payment to the records,
+     * the user's overall {@code fineBalance} is decreased by the total payment amount.
+     * </p>
      *
-     * @param amount positive amount not exceeding balance
-     * @throws IllegalArgumentException if amount negative or exceeds balance
+     * <p>
+     * This method ensures that no individual record's paid amount exceeds its total fine,
+     * and that the total payment does not exceed the user's current fine balance.
+     * </p>
+     *
+     * @param amount the amount to pay; must be positive and not exceed the user's current fine balance
+     * @param borrowRecords the list of borrowing records to which the payment should be applied;
+     *                      typically, this is the list of the user's borrow records
+     * @throws IllegalArgumentException if {@code amount} is negative, exceeds {@code fineBalance},
+     *                                  or if {@code borrowRecords} is {@code null}
      */
-    public void payFine(BigDecimal amount) {
+    public void payFine(BigDecimal amount, List<BorrowRecord> borrowRecords) {
+        if (borrowRecords == null)
+            throw new IllegalArgumentException("Borrow records list cannot be null");
         if (amount.compareTo(BigDecimal.ZERO) < 0)
             throw new IllegalArgumentException("Payment amount cannot be negative");
         if (amount.compareTo(fineBalance) > 0)
             throw new IllegalArgumentException("Payment exceeds current fine balance");
+
+        BigDecimal remaining = amount;
+
+        for (BorrowRecord record : borrowRecords) {
+            BigDecimal toPay = record.getRemainingFine().min(remaining);
+            if (toPay.compareTo(BigDecimal.ZERO) > 0) {
+                record.setFinePaid(record.getFinePaid().add(toPay));
+                remaining = remaining.subtract(toPay);
+            }
+            if (remaining.compareTo(BigDecimal.ZERO) == 0) break;
+        }
+
         fineBalance = fineBalance.subtract(amount);
     }
-
     /** Hashes a password using SHA-256. */
     private static String hashPassword(String password) {
         return hashPassword(password, "SHA-256");

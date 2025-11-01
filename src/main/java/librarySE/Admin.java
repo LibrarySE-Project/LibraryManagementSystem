@@ -38,10 +38,6 @@ public class Admin extends User {
     /** Reference to the library system managed by this admin. */
     private Library library;
     
-    /** Default constructor (used for testing or initialization). */
-    public Admin() {
-        super(); 
-    }
 
     /**
      * Private constructor to enforce the Singleton pattern.
@@ -132,9 +128,10 @@ public class Admin extends User {
      * <p>
      * This method uses the currently assigned {@link Observer} implementation
      * (either mock or real SMTP) to deliver reminder messages.
+     * Only users who have overdue items (borrowed items past their due date) will be notified.
      * </p>
      *
-     * @param library the library instance containing user and borrowing data
+     * @param library the library instance containing users and borrowing records
      * @throws IllegalStateException if the admin is not logged in
      */
     public void sendReminders(Library library) {
@@ -147,13 +144,15 @@ public class Admin extends User {
     /**
      * Attempts to unregister (remove) a user from the library system.
      * <p>
-     * The admin can only remove a user if:
+     * The admin can only remove a user if all of the following conditions are met:
      * <ul>
      *   <li>The user exists in the library's user list.</li>
-     *   <li>The user has no active borrowed items.</li>
+     *   <li>The user has no active borrowed items (all items returned).</li>
      *   <li>The user has no unpaid fines.</li>
      * </ul>
-     * Any associated borrow records are also removed.
+     * <p>
+     * If successful, all {@link BorrowRecord} instances associated with the user
+     * are also removed from the library.
      * </p>
      *
      * @param targetUser the user to be unregistered
