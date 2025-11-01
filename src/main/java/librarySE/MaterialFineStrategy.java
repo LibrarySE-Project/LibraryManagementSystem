@@ -1,58 +1,65 @@
 package librarySE;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
- * A {@link FineStrategy} implementation that determines fine rates and borrowing periods
- * based on the {@link MaterialType} of the library item.
+ * Implements the {@link FineStrategy} interface based on the type of library material.
  * <p>
- * Each material type has its own fixed fine rate per overdue day and a specific borrowing period:
- * <ul>
- *   <li>{@link MaterialType#BOOK} → 10 NIS per day, 28-day borrow period</li>
- *   <li>{@link MaterialType#CD} → 20 NIS per day, 7-day borrow period</li>
- *   <li>{@link MaterialType#JOURNAL} → 15 NIS per day, 21-day borrow period</li>
- * </ul>
+ * Each {@link MaterialType} (BOOK, CD, JOURNAL) has a predefined fine rate per overdue day
+ * and a standard borrowing period.
  * </p>
- *
+ * 
+ * <p>
+ * This class calculates fines for overdue items and provides the borrowing period
+ * for each material type.
+ * </p>
+ * 
  * @see FineStrategy
  * @see MaterialType
- * @see BorrowRecord
  * @author Malak
  */
 public class MaterialFineStrategy implements FineStrategy {
 
-    /** Fine rate applied per overdue day. */
+    /** Mapping of material type to daily fine rate. */
+    private static final Map<MaterialType, BigDecimal> RATE_PER_DAY = Map.of(
+        MaterialType.BOOK, BigDecimal.valueOf(10),
+        MaterialType.CD, BigDecimal.valueOf(20),
+        MaterialType.JOURNAL, BigDecimal.valueOf(15)
+    );
+
+    /** Mapping of material type to standard borrow period in days. */
+    private static final Map<MaterialType, Integer> BORROW_PERIOD = Map.of(
+        MaterialType.BOOK, 28,
+        MaterialType.CD, 7,
+        MaterialType.JOURNAL, 21
+    );
+
+    /** The fine rate per day for this material. */
     private final BigDecimal ratePerDay;
 
-    /** Maximum number of days the item can be borrowed before it becomes overdue. */
+    /** The borrowing period in days for this material. */
     private final int borrowPeriodDays;
 
     /**
-     * Constructs a fine strategy based on the given material type.
+     * Constructs a {@code MaterialFineStrategy} for the given material type.
      *
-     * @param type the type of library material (e.g., BOOK, CD, JOURNAL)
-     * @throws IllegalArgumentException if the type is unknown
+     * @param type the type of library material; must exist in RATE_PER_DAY and BORROW_PERIOD
+     * @throws IllegalArgumentException if the material type is unknown
      */
     public MaterialFineStrategy(MaterialType type) {
-    	 switch (type) {
-          case BOOK:
-              ratePerDay = BigDecimal.valueOf(10);
-              borrowPeriodDays = 28;
-              break;
-          case CD:
-              ratePerDay = BigDecimal.valueOf(20);
-              borrowPeriodDays = 7;
-              break;
-          case JOURNAL:
-              ratePerDay = BigDecimal.valueOf(15);
-              borrowPeriodDays = 21;
-              break;
-          default:
-              throw new IllegalArgumentException("Unknown material type: " + type);
-          }
+        if (!RATE_PER_DAY.containsKey(type))
+            throw new IllegalArgumentException("Unknown material type: " + type);
+        this.ratePerDay = RATE_PER_DAY.get(type);
+        this.borrowPeriodDays = BORROW_PERIOD.get(type);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * Calculates the fine for a given number of overdue days.
+     *
+     * @param overdueDays the number of days the item is overdue; must be >= 0
+     * @return the total fine as a {@link BigDecimal}; returns zero if overdueDays <= 0
+     */
     @Override
     public BigDecimal calculateFine(long overdueDays) {
         if (overdueDays <= 0) return BigDecimal.ZERO;
@@ -60,12 +67,10 @@ public class MaterialFineStrategy implements FineStrategy {
     }
 
     /**
-     * Returns the borrowing period in days for the associated material type.
+     * Returns the standard borrowing period for this material type.
      *
-     * @return number of days allowed for borrowing
+     * @return number of days the item can be borrowed without fines
      */
     @Override
-    public int getBorrowPeriodDays() {
-        return borrowPeriodDays;
-    }
+    public int getBorrowPeriodDays() { return borrowPeriodDays; }
 }
