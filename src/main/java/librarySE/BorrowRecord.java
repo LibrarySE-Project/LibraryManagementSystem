@@ -7,40 +7,25 @@ import java.time.temporal.ChronoUnit;
 /**
  * Represents a single borrowing record in the library system.
  * <p>
+ * Uses the Strategy Pattern through {@link FineContext} to calculate overdue fines.
+ * The context delegates fine calculation to the assigned {@link FineStrategy}.
+ * </p>
+ *
+ * <p>
  * Each record links a {@link User} with a {@link LibraryItem}, tracking:
  * <ul>
- *     <li>The borrow date</li>
- *     <li>The due date (automatically calculated based on the {@link FineStrategy} of the item)</li>
- *     <li>Applicable fines for overdue items</li>
+ *     <li>Borrow and due dates</li>
+ *     <li>Fine calculation through {@link FineContext}</li>
+ *     <li>Fine payment and application logic</li>
  * </ul>
- * </p>
- *
- * <p>
- * This class implements the Strategy Pattern for fine calculation using {@link FineStrategy}.
- * Each material type (Book, CD, Journal, etc.) has its own borrow period defined in its strategy.
- * The {@code dueDate} for a borrow record is automatically set to:
- * <pre>
- * borrowDate + fineStrategy.getBorrowPeriodDays()
- * </pre>
- * ensuring that different material types have their own return deadlines.
- * </p>
- *
- * <p>
- * The availability of the item is controlled via the {@link LibraryItem} interface.
- * An item is considered returned if {@link LibraryItem#isAvailable()} returns {@code true}.
- * </p>
- *
- * <p>
- * All date calculations (borrow date, due date, return date) use {@link LocalDate} parameters.
- * This allows specifying a custom date for testing or simulation instead of relying on the current date.
  * </p>
  *
  * @see User
  * @see LibraryItem
  * @see FineStrategy
+ * @see FineContext
  * @author Eman
  */
-
 public class BorrowRecord {
 
     /** The user who borrowed the item */
@@ -49,8 +34,8 @@ public class BorrowRecord {
     /** The borrowed item (Book, CD, Journal, etc.) */
     private final LibraryItem item;
 
-    /** Strategy used to calculate fines for overdue items */
-    private final FineStrategy fineStrategy;
+    /** Fine calculation context (aggregates a FineStrategy) */
+    private final FineContext fineContext;
 
     /** Number of days allowed for borrowing (from the strategy) */
     private final int borrowPeriodDays;
@@ -63,34 +48,29 @@ public class BorrowRecord {
 
     /** Current fine for this borrowing record */
     private BigDecimal fine;
-    
-    /** Indicates if the overdue fine has already been applied to the user to avoid double charging */
+
+    /** Indicates if the overdue fine has already been applied to the user */
     private boolean fineApplied = false;
-    
-    /** Amount of fine already paid for this record */ 
+
+    /** Amount of fine already paid for this record */
     private BigDecimal finePaid = BigDecimal.ZERO;
 
     /**
-     * Constructs a borrowing record for a given user, item, fine strategy, and borrow date.
-     * <p>
-     * Upon construction, the item is marked as unavailable (borrowed), and the due date
-     * is automatically calculated based on the borrow period from the {@link FineStrategy}.
-     * </p>
+     * Constructs a borrowing record for a given user, item, fine context, and borrow date.
      *
      * @param user the user borrowing the item; must not be {@code null}
      * @param item the borrowed item; must not be {@code null}
-     * @param fineStrategy the fine strategy to calculate overdue fines; must not be {@code null}
+     * @param fineContext the fine calculation context; must not be {@code null}
      * @param borrowDate the date when the item is borrowed; must not be {@code null}
-     * @throws IllegalArgumentException if any argument is {@code null}
      */
-    public BorrowRecord(User user, LibraryItem item, FineStrategy fineStrategy, LocalDate borrowDate) {
-        if (user == null || item == null || fineStrategy == null || borrowDate == null) {
-            throw new IllegalArgumentException("User, item, fineStrategy, and borrowDate cannot be null.");
+    public BorrowRecord(User user, LibraryItem item, FineContext fineContext, LocalDate borrowDate) {
+        if (user == null || item == null || fineContext == null || borrowDate == null) {
+            throw new IllegalArgumentException("User, item, fineContext, and borrowDate cannot be null.");
         }
         this.user = user;
         this.item = item;
-        this.fineStrategy = fineStrategy;
-        this.borrowPeriodDays = this.fineStrategy.getBorrowPeriodDays();
+        this.fineContext = fineContext;
+        this.borrowPeriodDays = fineContext.getBorrowPeriodDays();
         this.borrowDate = borrowDate;
         this.dueDate = borrowDate.plusDays(borrowPeriodDays);
         this.fine = BigDecimal.ZERO;
@@ -102,105 +82,57 @@ public class BorrowRecord {
     /** Returns the borrowed item */
     public LibraryItem getItem() { return item; }
 
-    /** Returns the date when the item was borrowed */
+    /** Returns the borrow date */
     public LocalDate getBorrowDate() { return borrowDate; }
 
-    /** Returns the due date for returning the item */
+    /** Returns the due date */
     public LocalDate getDueDate() { return dueDate; }
-    
-    /** Returns true if the fine has already been applied to the user */
-    public boolean isFineApplied() {
-        return fineApplied;
-    }
 
-    /** Sets whether the fine has been applied to the user */
-    public void setFineApplied(boolean fineApplied) {
-        this.fineApplied = fineApplied;
-    }
+    /** Returns true if the fine has been applied */
+    public boolean isFineApplied() { return fineApplied; }
 
-    /** Checks if the item has been returned */
+    /** Sets fine applied flag */
+    public void setFineApplied(boolean fineApplied) { this.fineApplied = fineApplied; }
+
+    /** Checks if the item is returned */
     public boolean isReturned() { return item.isAvailable(); }
 
-    /**
-     * Returns the current fine for this borrowing record.
-     * <p>
-     * Fine is calculated based on the provided {@code currentDate}.
-     * </p>
-     *
-     * @param currentDate the date for calculating overdue fines; must not be {@code null}
-     * @return the calculated fine
-     * @throws IllegalArgumentException if {@code currentDate} is null
-     */
+    /** Returns the fine as of currentDate */
     public BigDecimal getFine(LocalDate currentDate) {
         calculateFine(currentDate);
         return fine;
     }
-    /**
-     * Returns the amount of fine already paid for this borrowing record.
-     *
-     * @return the paid fine as a {@link BigDecimal}, never {@code null}
-     */
-    public BigDecimal getFinePaid() {
-        return finePaid;
-    }
 
-    /**
-     * Sets the amount of fine paid for this borrowing record.
-     * <p>
-     * This method validates that the amount is non-null, non-negative, and does not exceed
-     * the total fine for this record.
-     * </p>
-     *
-     * @param amount the amount to mark as paid; must be non-null, ≥ 0, and ≤ {@link #fine}
-     * @throws IllegalArgumentException if {@code amount} is null, negative, or exceeds the total fine
-     */
+    /** Returns fine already paid */
+    public BigDecimal getFinePaid() { return finePaid; }
+
+    /** Sets fine paid (validated) */
     public void setFinePaid(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0)
             throw new IllegalArgumentException("Paid amount cannot be null or negative");
-        }
-        if (amount.compareTo(fine) > 0) {
+        if (amount.compareTo(fine) > 0)
             throw new IllegalArgumentException("Paid amount cannot exceed fine");
-        }
         this.finePaid = amount;
     }
 
-    /**
-     * Returns the remaining unpaid fine for this borrowing record.
-     * <p>
-     * Computed as the total fine minus the amount already paid. This can be used
-     * to display outstanding fines for the user.
-     * </p>
-     *
-     * @return the remaining fine as a {@link BigDecimal}, never {@code null}
-     */
+    /** Returns remaining unpaid fine */
     public BigDecimal getRemainingFine() {
         return fine.subtract(finePaid);
     }
 
-    /**
-     * Calculates and updates the fine based on overdue days.
-     *
-     * @param currentDate the date for calculating overdue fines; must not be {@code null}
-     */
+    /** Calculates fine based on overdue days using the FineContext */
     public void calculateFine(LocalDate currentDate) {
         if (currentDate == null)
             throw new IllegalArgumentException("currentDate cannot be null.");
         if (!item.isAvailable() && currentDate.isAfter(dueDate)) {
             long daysOverdue = ChronoUnit.DAYS.between(dueDate, currentDate);
-            fine = fineStrategy.calculateFine(daysOverdue);
+            fine = fineContext.calculateFine(daysOverdue);
         } else {
             fine = BigDecimal.ZERO;
         }
     }
 
-    /**
-     * Applies the current fine to the user's account.
-     * <p>
-     * Ensures that the fine is only applied once per overdue period.
-     * </p>
-     *
-     * @param currentDate the date used to calculate and apply fines; must not be {@code null}
-     */
+    /** Applies fine to user once */
     public void applyFineToUser(LocalDate currentDate) {
         calculateFine(currentDate);
         if (!fineApplied && fine.compareTo(BigDecimal.ZERO) > 0) {
@@ -209,36 +141,25 @@ public class BorrowRecord {
         }
     }
 
-    /**
-     * Marks the item as returned and applies any overdue fines to the user.
-     * <p>
-     * The return date is provided to calculate fines correctly.
-     * </p>
-     *
-     * @param returnDate the date when the item is returned; must not be {@code null}
-     */
+    /** Marks item as returned and applies any overdue fine */
     public void markReturned(LocalDate returnDate) {
         applyFineToUser(returnDate);
         item.returnItem();
     }
 
-    /**
-     * Checks if the item is currently overdue as of the given date.
-     *
-     * @param currentDate the date for checking overdue status; must not be {@code null}
-     * @return {@code true} if the item is overdue, {@code false} otherwise
-     */
+    /** Checks if item is overdue */
     public boolean isOverdue(LocalDate currentDate) {
         if (currentDate == null)
             throw new IllegalArgumentException("currentDate cannot be null.");
         return !item.isAvailable() && currentDate.isAfter(dueDate);
     }
 
-    /** Returns a string representation of the borrowing record */
+    /** String representation */
     @Override
     public String toString() {
         return String.format("%s borrowed \"%s\" on %s (due: %s) | Returned: %b | Fine: %s",
                 user.getUsername(), item.getTitle(), borrowDate, dueDate, isReturned(), fine);
     }
 }
+
 
