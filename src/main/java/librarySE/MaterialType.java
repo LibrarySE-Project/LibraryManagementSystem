@@ -1,37 +1,43 @@
 package librarySE;
 
 /**
- * Enumerates the different types of materials available in the library system.
+ * Enum representing types of materials in the library.
  * <p>
- * Each {@code MaterialType} represents a distinct category of library items that 
- * can be borrowed, returned, and managed within the system.
+ * Each material type is directly associated with its own {@link FineStrategy}.
+ * This eliminates the need for a switch or factory class.
  * </p>
  *
- * <p>
- * The supported material types are:
- * <ul>
- *   <li>{@link #BOOK} — Represents a standard book item.</li>
- *   <li>{@link #CD} — Represents a compact disc item (e.g., audio or software CD).</li>
- *   <li>{@link #JOURNAL} — Represents an academic or scientific journal.</li>
- * </ul>
- * </p>
- *
- * <p>
- * This enumeration is primarily used by {@link LibraryItem} and its subclasses 
- * to define the specific type of material being represented.
- * </p>
- *
- * @see LibraryItem
- * @author Malak
+ * @see FineStrategy
+ * @see BookFineStrategy
+ * @see CDFineStrategy
+ * @see JournalFineStrategy
  */
 public enum MaterialType {
-    /** Represents a book item in the library. */
-    BOOK,
 
-    /** Represents a CD item (e.g., audio or multimedia disc). */
-    CD,
+    BOOK {
+        @Override
+        public FineStrategy createFineStrategy() {
+            return new BookFineStrategy();
+        }
+    },
+    CD {
+        @Override
+        public FineStrategy createFineStrategy() {
+            return new CDFineStrategy();
+        }
+    },
+    JOURNAL {
+        @Override
+        public FineStrategy createFineStrategy() {
+            return new JournalFineStrategy();
+        }
+    };
 
-    /** Represents a journal or periodical publication. */
-    JOURNAL
+    /**
+     * Creates the appropriate {@link FineStrategy} for this material type.
+     *
+     * @return a new instance of {@link FineStrategy} for the type
+     */
+    public abstract FineStrategy createFineStrategy();
 }
 

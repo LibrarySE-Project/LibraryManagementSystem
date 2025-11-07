@@ -9,43 +9,50 @@ import java.util.stream.Collectors;
 /**
  * Singleton class responsible for managing the borrowing and returning of library items.
  * <p>
- * Responsibilities include:
- * <ul>
- *     <li>Borrowing items for users while enforcing borrowing rules (no overdue items, no unpaid fines).</li>
- *     <li>Returning items and marking them as returned.</li>
- *     <li>Tracking overdue items and applying fines according to each item's {@link FineStrategy}.</li>
- *     <li>Calculating total fines for a specific user.</li>
- * </ul>
- * </p>
- * 
- * <p>
- * Thread-safety:
- * <ul>
- *     <li>The {@link #borrowRecords} list is a {@link CopyOnWriteArrayList} to allow safe concurrent reads and modifications.</li>
- *     <li>Borrowing and returning of items are synchronized on each {@link LibraryItem} to prevent race conditions.</li>
- * </ul>
+ * This class acts as the central point for borrowing operations in the library system.
+ * It coordinates users, items, and fines through {@link BorrowRecord} and {@link FineContext}.
  * </p>
  *
- * <p>
- * This class uses the Singleton pattern. Use {@link #getInstance()} to obtain
- * the single global instance of {@code BorrowManager}.
- * </p>
+ * <h3>Responsibilities:</h3>
+ * <ul>
+ *     <li>Borrowing items for users while enforcing borrowing rules (no overdue items or unpaid fines).</li>
+ *     <li>Returning items and marking them as available again.</li>
+ *     <li>Tracking overdue items and applying fines using {@link FineContext} with different {@link FineStrategy} implementations.</li>
+ *     <li>Calculating total fines per user.</li>
+ * </ul>
  *
- * @author Malak
+ * <h3>Thread-safety:</h3>
+ * <ul>
+ *     <li>The {@link #borrowRecords} list is a {@link CopyOnWriteArrayList} for safe concurrent access.</li>
+ *     <li>Borrowing and returning operations are synchronized per {@link LibraryItem} to prevent race conditions.</li>
+ * </ul>
+ *
+ * <h3>Design Patterns:</h3>
+ * <ul>
+ *     <li><b>Singleton</b> – ensures a single instance of {@code BorrowManager} exists system-wide.</li>
+ *     <li><b>Strategy</b> – delegates fine calculation via {@link FineContext} and {@link FineStrategy} implementations.</li>
+ * </ul>
+ *
  * @see BorrowRecord
  * @see LibraryItem
+ * @see FineContext
  * @see FineStrategy
  * @see User
+ * @see BookFineStrategy
+ * @see CDFineStrategy
+ * @see JournalFineStrategy
+ * 
+ * @author Malak
  */
 public class BorrowManager {
 
-    /** Singleton instance */
+    /** Singleton instance of the BorrowManager */
     private static BorrowManager instance;
 
     /** Thread-safe list of all borrow records in the system */
     private final CopyOnWriteArrayList<BorrowRecord> borrowRecords;
 
-    /** Private constructor to enforce Singleton pattern. */
+    /** Private constructor to enforce the Singleton pattern. */
     private BorrowManager() {
         this.borrowRecords = new CopyOnWriteArrayList<>();
     }
@@ -53,7 +60,7 @@ public class BorrowManager {
     /**
      * Returns the singleton instance of {@code BorrowManager}.
      * <p>
-     * If no instance exists yet, it creates one.
+     * If no instance exists yet, it creates one lazily.
      * </p>
      *
      * @return the single global {@link BorrowManager} instance
@@ -68,21 +75,23 @@ public class BorrowManager {
     /**
      * Borrows a library item for a user.
      * <p>
-     * Rules enforced:
+     * The following rules are enforced:
      * <ul>
-     *     <li>User must not have any unpaid fines.</li>
-     *     <li>User must not have any overdue items.</li>
-     *     <li>Item must be currently available.</li>
+     *     <li>The user must not have any unpaid fines.</li>
+     *     <li>The user must not have any overdue items.</li>
+     *     <li>The item must currently be available for borrowing.</li>
      * </ul>
-     * If all checks pass, a new {@link BorrowRecord} is created and added to the internal list.
-     * <p>
-     * Thread-safety: Synchronized on the {@link LibraryItem} during the borrow operation.
+     *
+     * If all checks pass, a new {@link BorrowRecord} is created with a {@link FineContext}
+     * corresponding to the item's {@link MaterialType}, and added to the list of borrow records.
      * </p>
      *
-     * @param user the user borrowing the item; must not be null
-     * @param item the library item to borrow; must not be null
-     * @return {@code true} if borrowing succeeds
-     * @throws IllegalArgumentException if user or item is null
+     * <p><b>Thread-safety:</b> Borrowing is synchronized on the {@link LibraryItem} instance.</p>
+     *
+     * @param user the user borrowing the item; must not be {@code null}
+     * @param item the library item to borrow; must not be {@code null}
+     * @return {@code true} if the borrowing operation succeeds
+     * @throws IllegalArgumentException if user or item is {@code null}
      * @throws IllegalStateException if the user has unpaid fines, overdue items, or the item is unavailable
      */
     public boolean borrowItem(User user, LibraryItem item) {
@@ -106,7 +115,8 @@ public class BorrowManager {
             item.borrow();
         }
 
-        BorrowRecord record = new BorrowRecord(user, item, item.getFineStrategy(), today);
+        FineContext fineContext = new FineContext(item.getMaterialType().createFineStrategy());
+        BorrowRecord record = new BorrowRecord(user, item, fineContext, today);
         borrowRecords.add(record);
         return true;
     }
@@ -116,12 +126,12 @@ public class BorrowManager {
      * <p>
      * Marks the corresponding {@link BorrowRecord} as returned and applies any overdue fines
      * up to the return date.
-     * <p>
-     * Thread-safety: Synchronized on the {@link LibraryItem} during the return operation.
      * </p>
      *
-     * @param user the user returning the item; must not be null
-     * @param item the library item being returned; must not be null
+     * <p><b>Thread-safety:</b> Return is synchronized on the {@link LibraryItem} instance.</p>
+     *
+     * @param user the user returning the item; must not be {@code null}
+     * @param item the library item being returned; must not be {@code null}
      * @throws IllegalArgumentException if no active borrow record is found for the user-item pair
      */
     public void returnItem(User user, LibraryItem item) {
@@ -144,10 +154,10 @@ public class BorrowManager {
     /**
      * Applies overdue fines for all borrow records as of the given date.
      * <p>
-     * Each record is charged only once to prevent double fines.
+     * Each record is charged only once to prevent double fine application.
      * </p>
      *
-     * @param date the date to check for overdue items
+     * @param date the date used to check for overdue items; must not be {@code null}
      */
     public void applyOverdueFines(LocalDate date) {
         for (BorrowRecord record : borrowRecords) {
@@ -159,7 +169,7 @@ public class BorrowManager {
     /**
      * Returns all borrow records for a specific user.
      *
-     * @param user the user whose records are retrieved
+     * @param user the user whose records are retrieved; must not be {@code null}
      * @return a list of {@link BorrowRecord} associated with the user
      */
     public List<BorrowRecord> getBorrowRecordsForUser(User user) {
@@ -171,9 +181,9 @@ public class BorrowManager {
     /**
      * Calculates the total fines for a user as of a specific date.
      *
-     * @param user the user whose fines are calculated
-     * @param date the date to calculate fines up to
-     * @return total fines as {@link BigDecimal}
+     * @param user the user whose fines are calculated; must not be {@code null}
+     * @param date the date up to which fines are calculated; must not be {@code null}
+     * @return total fines as a {@link BigDecimal}
      */
     public BigDecimal calculateTotalFines(User user, LocalDate date) {
         return borrowRecords.stream()
@@ -185,7 +195,7 @@ public class BorrowManager {
     /**
      * Returns a list of all overdue borrow records as of the given date.
      *
-     * @param date the date to check for overdue items
+     * @param date the date to check for overdue items; must not be {@code null}
      * @return list of overdue {@link BorrowRecord} objects
      */
     public List<BorrowRecord> getOverdueItems(LocalDate date) {
@@ -201,11 +211,9 @@ public class BorrowManager {
      * Returns a defensive copy to prevent external modification of the internal list.
      * </p>
      *
-     * @return list of all {@link BorrowRecord} objects
+     * @return an immutable list of all {@link BorrowRecord} objects
      */
     public List<BorrowRecord> getAllBorrowRecords() {
         return List.copyOf(borrowRecords);
     }
 }
-
-

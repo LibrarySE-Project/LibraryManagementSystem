@@ -4,40 +4,64 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Represents a CD (music disc) in the library system.
+ * Represents a {@link LibraryItem} of type CD (Compact Disc) in the library system.
  * <p>
- * Each CD has a unique identifier, a title, an artist, and an availability status.
- * Implements {@link LibraryItem} to support borrowing and returning functionality.
+ * Each {@code CD} instance stores identifying information such as a unique ID, title, and artist.
+ * It inherits core functionality including borrowing, returning, and availability
+ * management from {@link AbstractLibraryItem}, ensuring consistent thread-safe behavior
+ * across all library materials.
  * </p>
- * 
+ *
+ * <h3>Key Features:</h3>
+ * <ul>
+ *     <li>Encapsulates metadata specific to CDs (title and artist).</li>
+ *     <li>Automatically generates a unique {@link UUID} for each CD instance.</li>
+ *     <li>Supports keyword-based search across title and artist fields.</li>
+ *     <li>Integrates seamlessly with {@link BorrowManager} and fine calculation logic via {@link FineContext}.</li>
+ * </ul>
+ *
  * <p>
- * Thread-safe operations are provided for checking availability, borrowing, and returning the CD.
+ * This class follows the <b>Single Responsibility Principle</b> — it focuses solely
+ * on representing a CD entity, while borrowing logic is handled by
+ * {@link AbstractLibraryItem} and {@link BorrowManager}.
  * </p>
- * 
- * @author Malak
+ *
+ * <h3>Example Usage:</h3>
+ * <pre>{@code
+ * CD cd = new CD("Classical Symphony", "Beethoven");
+ * System.out.println(cd.getTitle());      // "Classical Symphony"
+ * System.out.println(cd.getArtist());     // "Beethoven"
+ * System.out.println(cd.isAvailable());   // true
+ * cd.borrow();
+ * System.out.println(cd.isAvailable());   // false
+ * }</pre>
+ *
  * @see LibraryItem
+ * @see AbstractLibraryItem
  * @see MaterialType
+ * @see BorrowManager
+ * @see FineContext
+ * @see CDFineStrategy
+ *
+ * author Malak
  */
-public class CD implements LibraryItem {
+public class CD extends AbstractLibraryItem {
 
-    /** Unique identifier for the CD (UUID). */
+    /** Unique identifier for this CD (automatically generated). */
     private final UUID id = UUID.randomUUID();
 
-    /** The title of the CD. */
+    /** The title of the CD (e.g., album or compilation name). */
     private String title;
 
-    /** The artist of the CD. */
+    /** The artist or performer of the CD. */
     private String artist;
 
-    /** Availability status of the CD; true if available for borrowing. */
-    private boolean available = true;
-
     /**
-     * Constructs a new {@code CD} with the given title and artist.
+     * Constructs a new {@code CD} instance with the specified title and artist.
      *
-     * @param title the title of the CD; must not be null or empty
-     * @param artist the artist of the CD; must not be null or empty
-     * @throws IllegalArgumentException if title or artist is null or empty
+     * @param title  the title of the CD; must not be {@code null} or empty
+     * @param artist the artist or performer; must not be {@code null} or empty
+     * @throws IllegalArgumentException if {@code title} or {@code artist} is {@code null} or empty
      */
     public CD(String title, String artist) {
         validateNonEmpty(title, "Title");
@@ -47,66 +71,41 @@ public class CD implements LibraryItem {
     }
 
     /**
-     * Sets a new title for the CD.
+     * Returns the title of this CD.
      *
-     * @param title the new title; must not be null or empty
-     * @throws IllegalArgumentException if title is null or empty
+     * @return the CD title as a {@link String}
      */
-    public void setTitle(String title) { 
-        validateNonEmpty(title, "Title"); 
-        this.title = title.trim(); 
-    }
-
-    /**
-     * Sets a new artist for the CD.
-     *
-     * @param artist the new artist; must not be null or empty
-     * @throws IllegalArgumentException if artist is null or empty
-     */
-    public void setArtist(String artist) { 
-        validateNonEmpty(artist, "Artist"); 
-        this.artist = artist.trim(); 
-    }
-
-    /**
-     * Returns the title of the CD.
-     *
-     * @return the CD title
-     */
+    @Override
     public String getTitle() { return title; }
 
     /**
-     * Returns the artist of the CD.
+     * Returns the artist of this CD.
      *
-     * @return the CD artist
+     * @return the artist name as a {@link String}
      */
     public String getArtist() { return artist; }
 
     /**
-     * Checks if the CD is available for borrowing.
+     * Updates the title of this CD.
      *
-     * @return {@code true} if available, {@code false} if currently borrowed
+     * @param title the new title; must not be {@code null} or empty
+     * @throws IllegalArgumentException if {@code title} is {@code null} or empty
      */
-    @Override
-    public boolean isAvailable() { synchronized(this) { return available; } }
+    public void setTitle(String title) {
+        validateNonEmpty(title, "Title");
+        this.title = title.trim();
+    }
 
     /**
-     * Marks the CD as borrowed if it is available.
+     * Updates the artist name of this CD.
      *
-     * @return {@code true} if the CD was successfully borrowed,
-     *         {@code false} if it was already borrowed
+     * @param artist the new artist; must not be {@code null} or empty
+     * @throws IllegalArgumentException if {@code artist} is {@code null} or empty
      */
-    @Override
-    public boolean borrow() { synchronized(this) { if(!available) return false; available=false; return true; } }
-
-    /**
-     * Marks the CD as returned if it was borrowed.
-     *
-     * @return {@code true} if the CD was successfully returned,
-     *         {@code false} if it was already available
-     */
-    @Override
-    public boolean returnItem() { synchronized(this) { if(available) return false; available=true; return true; } }
+    public void setArtist(String artist) {
+        validateNonEmpty(artist, "Artist");
+        this.artist = artist.trim();
+    }
 
     /**
      * Returns the material type of this item.
@@ -117,67 +116,55 @@ public class CD implements LibraryItem {
     public MaterialType getMaterialType() { return MaterialType.CD; }
 
     /**
-     * Compares this CD to another object for equality.
+     * Checks whether this CD matches a given keyword.
      * <p>
-     * Two CDs are equal if they have the same unique {@code id}.
+     * A match occurs if the keyword (case-insensitive) appears in
+     * the title or artist name.
      * </p>
      *
-     * @param o the object to compare
-     * @return {@code true} if the other object is a {@code CD} with the same ID
+     * @param keyword the keyword to search for; must not be {@code null}
+     * @return {@code true} if this CD matches the keyword; {@code false} otherwise
+     * @throws IllegalArgumentException if {@code keyword} is {@code null}
      */
     @Override
-    public boolean equals(Object o) { 
-        return this==o || (o instanceof CD cd && id.equals(cd.id)); 
+    public boolean matchesKeyword(String keyword) {
+        if (keyword == null)
+            throw new IllegalArgumentException("Keyword cannot be null.");
+        String lower = keyword.toLowerCase();
+        return String.join(" ", title, artist).toLowerCase().contains(lower);
     }
 
     /**
-     * Returns the hash code for this CD based on its unique ID.
+     * Compares this CD to another object for equality.
+     * <p>
+     * Two CDs are considered equal if they share the same unique identifier.
+     * </p>
      *
-     * @return the hash code
+     * @param obj the object to compare with
+     * @return {@code true} if the other object is a {@code CD} with the same unique ID
+     */
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof CD cd && id.equals(cd.id);
+    }
+
+    /**
+     * Returns a hash code value for this CD based on its unique identifier.
+     *
+     * @return the hash code for this CD
      */
     @Override
     public int hashCode() { return Objects.hash(id); }
 
     /**
-     * Returns a string representation of the CD, including title, artist, and availability.
+     * Returns a formatted string representation of the CD,
+     * including its title, artist, and availability status.
      *
-     * @return formatted string representing the CD
+     * @return a human-readable string describing this CD
      */
     @Override
     public String toString() {
-        return title + " by " + artist + (available ? " [AVAILABLE]" : " [BORROWED]");
+        return String.format("[CD] %s by %s — %s",
+                title, artist, isAvailable() ? "Available" : "Borrowed");
     }
-
-    /**
-     * Validates that a string is not null or empty.
-     *
-     * @param value the string to validate
-     * @param fieldName the name of the field for error messages
-     * @throws IllegalArgumentException if value is null or empty
-     */
-    private void validateNonEmpty(String value, String fieldName) {
-        if(value==null || value.trim().isEmpty())
-            throw new IllegalArgumentException(fieldName + " cannot be null or empty");
-    }
-    /**
-     * Checks if the CD matches the given keyword.
-     * <p>
-     * A CD matches if the keyword is found (case-insensitive) in the title,
-     * artist, or genre.
-     * </p>
-     *
-     * @param keyword the keyword to search for; must not be null
-     * @return {@code true} if the CD matches the keyword, {@code false} otherwise
-     * @throws IllegalArgumentException if {@code keyword} is null
-     */
-    @Override
-    public boolean matchesKeyword(String keyword) {
-        if (keyword == null) {
-            throw new IllegalArgumentException("Keyword cannot be null");
-        }
-        String lower = keyword.toLowerCase();
-        return title.toLowerCase().contains(lower)
-            || artist.toLowerCase().contains(lower);
-    }
-
 }

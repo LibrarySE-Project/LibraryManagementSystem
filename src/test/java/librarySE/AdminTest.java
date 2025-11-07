@@ -17,7 +17,6 @@ class AdminTest {
     private Admin admin;
     private User user1;
     private User user2;
-    private Library library;
     private EmailNotifier mockNotifier;
 
     @BeforeEach
