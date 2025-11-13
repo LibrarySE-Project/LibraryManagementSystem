@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.*;
 
+import librarySE.core.strategy.BookFineStrategy;
+
 /**
  * Unit tests for {@link BookFineStrategy}.
  * Verifies fine calculation and borrow period behavior.

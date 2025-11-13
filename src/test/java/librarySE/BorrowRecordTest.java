@@ -2,6 +2,14 @@ package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.*;
+
+import librarySE.core.LibraryItem;
+import librarySE.core.MaterialType;
+import librarySE.managers.BorrowRecord;
+import librarySE.managers.Role;
+import librarySE.managers.User;
+import librarySE.strategy.FineStrategy;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 

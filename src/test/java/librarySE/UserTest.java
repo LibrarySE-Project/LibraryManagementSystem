@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import java.security.NoSuchAlgorithmException;
 import org.junit.jupiter.api.*;
 
+import librarySE.managers.Role;
+import librarySE.managers.User;
+
 /**
  * Unit tests for {@link User} class.
  * <p>
