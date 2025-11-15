@@ -2,6 +2,13 @@ package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.*;
+
+import librarySE.core.Book;
+import librarySE.core.strategy.BookFineStrategy;
+import librarySE.managers.Admin;
+import librarySE.managers.Role;
+import librarySE.managers.User;
+
 import java.util.List;
 
 /**

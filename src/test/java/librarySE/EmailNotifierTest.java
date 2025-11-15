@@ -2,6 +2,10 @@ package librarySE;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.*;
+
+import librarySE.managers.Role;
+import librarySE.managers.User;
+
 import java.util.List;
 
 /**
