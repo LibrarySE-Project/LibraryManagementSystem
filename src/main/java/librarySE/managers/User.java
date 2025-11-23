@@ -31,11 +31,10 @@ import librarySE.utils.ValidationUtils;
  * System.out.println(u.getFineBalance()); // 15
  * }</pre>
  *
+ * @author Eman
+ * @version 2.1
  * @see Role
  * @see ValidationUtils
- * @author Malak
- * @version 2.1
- * @since 2025-11
  */
 public class User implements Serializable {
 

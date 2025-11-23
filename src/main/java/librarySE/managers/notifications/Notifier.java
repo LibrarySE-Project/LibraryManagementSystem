@@ -18,7 +18,7 @@ import librarySE.managers.User;
  * emailNotifier.notify(user, "Your reserved item is now available.");
  * }</pre>
  *
- * @author 
+ * @author Malak
  */
 public interface Notifier {
 

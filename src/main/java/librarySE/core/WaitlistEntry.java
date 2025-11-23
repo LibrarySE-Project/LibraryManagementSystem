@@ -36,7 +36,7 @@ import librarySE.utils.ValidationUtils;
  * waitlistRepo.saveAll(waitlist);
  * }</pre>
  *
- * @author 
+ * @author Eman
  * @see librarySEv2.managers.BorrowManager
  * @see librarySEv2.repo.WaitlistRepository
  */

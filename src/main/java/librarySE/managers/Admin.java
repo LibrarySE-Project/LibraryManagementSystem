@@ -37,9 +37,9 @@ package librarySE.managers;
  * admin.logout();
  * }</pre>
  *
+ * @author Eman
  * @see User
  * @see Role
- * @author Malak
  */
 public class Admin extends User {
 

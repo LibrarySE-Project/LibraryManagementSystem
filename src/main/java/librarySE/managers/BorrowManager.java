@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * <p><b>Note:</b> Email notifications require a configured {@link librarySE.core.EmailService}
  * with valid credentials in the <b>.env</b> file.</p>
  *
- * @author 
+ * @author Malak
  */
 public class BorrowManager {
 

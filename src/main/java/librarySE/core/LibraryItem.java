@@ -23,7 +23,7 @@ import java.util.UUID;
  * </ul>
  * </p>
  *
- * @author malak
+ * @author Eman
  * @see Borrowable
  * @see Searchable
  * @see MaterialType

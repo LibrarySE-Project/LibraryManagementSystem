@@ -38,7 +38,7 @@ import java.util.List;
  * repo.saveAll(waitlist);
  * }</pre>
  *
- * @author 
+ * @author Eman
  * @see librarySEv2.core.WaitlistEntry
  * @see librarySEv2.utils.FileUtils
  */

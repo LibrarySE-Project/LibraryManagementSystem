@@ -23,7 +23,7 @@ import java.util.*;
  * <p>This implementation ensures that all borrowing data is
  * automatically persisted between system restarts.</p>
  *
- * @author
+ * @author Eman
  */
 public class FileBorrowRecordRepository implements BorrowRecordRepository {
 

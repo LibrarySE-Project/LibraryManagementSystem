@@ -24,8 +24,8 @@ package librarySE.managers;
  * System.out.println(adminRole.getDescription()); // "Can add/delete & manage users & items"
  * }</pre>
  *
- * @see librarySEv2.core.User
  * @author Malak
+ * @see librarySEv2.core.User
  */
 public enum Role {
 

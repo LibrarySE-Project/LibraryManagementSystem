@@ -27,8 +27,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Optional<User> user = userManager.findUserByEmail("student@najah.edu");
  * user.ifPresent(u -> System.out.println("Found user: " + u.getUsername()));
  * }</pre>
- *
- * @author 
+ * 
+ * @author Malak
  * @see BorrowManager
  * @see UserRepository
  */

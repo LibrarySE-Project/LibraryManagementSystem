@@ -36,7 +36,7 @@ import java.util.Properties;
  * </pre>
  * </p>
  *
- * @author Malak
+ * @author Eman
  * @version 1.0
  */
 public class EmailService {

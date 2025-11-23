@@ -30,10 +30,10 @@ import librarySE.utils.ValidationUtils;
  * manager.logout();
  * }</pre>
  *
+ * @author Malak
  * @see Admin
  * @see LoggerUtils
  * @see ValidationUtils
- * @author Malak
  */
 public class LoginManager {
 

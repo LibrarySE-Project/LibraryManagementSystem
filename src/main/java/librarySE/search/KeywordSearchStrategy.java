@@ -21,7 +21,7 @@ import librarySE.utils.ValidationUtils;
  * SearchStrategy strategy = new KeywordSearchStrategy();
  * boolean result = strategy.matches(book, "Artificial Intelligence");
  * }</pre>
- * @author Malak
+ * @author Eman
  */
 public class KeywordSearchStrategy implements SearchStrategy {
 

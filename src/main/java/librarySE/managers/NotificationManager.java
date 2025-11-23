@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * <p>This will send a notification to each user who has overdue items
  * as of the given date.</p>
  *
- * @author 
+ * @author Eman
  */
 public class NotificationManager {
 

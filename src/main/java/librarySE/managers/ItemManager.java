@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  *
  * <p><b>Design Patterns used:</b> Singleton, Strategy, and Observer (via Email notifications).</p>
  *
- * @author  
+ * @author Eman
  */
 public class ItemManager {
 

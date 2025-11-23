@@ -44,12 +44,11 @@ import librarySE.core.LibraryItem;
  * boolean found = strategy.matches(book, "java");
  * }</pre>
  *
+ * @author Eman
  * @see librarySEv2.core.LibraryItem
  * @see librarySEv2.search.TitleSearchStrategy
  * @see librarySEv2.search.AuthorSearchStrategy
  * @see librarySEv2.search.KeywordSearchStrategy
- *
- * @author Malak
  */
 public interface SearchStrategy {
 

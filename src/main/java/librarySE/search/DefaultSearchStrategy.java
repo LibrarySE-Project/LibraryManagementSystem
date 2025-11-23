@@ -27,11 +27,10 @@ import librarySE.utils.ValidationUtils;
  * boolean found = strategy.matches(book, "Bloch");
  * }</pre>
  *
+ * @author Malak
  * @see ValidationUtils
  * @see SearchStrategy
  * @see librarySE.core.LibraryItem
- *
- * @author Malak
  */
 public class DefaultSearchStrategy implements SearchStrategy {
 

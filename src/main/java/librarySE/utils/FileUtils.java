@@ -26,7 +26,7 @@ import java.util.*;
  * </ul>
  *
  *
- * @author Malak
+ * @author Eman
  */
 public final class FileUtils {
 

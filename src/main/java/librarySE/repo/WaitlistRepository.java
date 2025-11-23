@@ -1,14 +1,16 @@
 package librarySE.repo;
 
-
 import librarySE.core.WaitlistEntry;
 import java.util.List;
 
 /**
  * Defines persistence operations for waitlist entries.
  * <p>This interface allows saving and loading the list of users waiting for specific library items.</p>
+ *
+ * @author Malak
  */
 public interface WaitlistRepository {
+
     /**
      * Loads all waitlist entries from persistent storage.
      *

@@ -28,10 +28,10 @@ import librarySE.utils.ValidationUtils;
  * // [CD] Greatest Hits by Queen (Price:39.99) — Available
  * }</pre>
  *
+ * @author Malak
  * @see AbstractLibraryItem
  * @see MaterialType
  * @see ValidationUtils
- * @author Malak
  */
 public class CD extends AbstractLibraryItem {
 
