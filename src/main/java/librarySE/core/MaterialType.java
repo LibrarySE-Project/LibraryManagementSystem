@@ -26,13 +26,12 @@ import librarySE.strategy.FineStrategyFactory;
  * int fineAmount = fine.calculateFine(3); // e.g. 3 days overdue × 20 NIS/day = 60 NIS
  * }</pre>
  *
+ * @author Eman
  * @see librarySE.strategy.FineStrategy
  * @see librarySE.strategy.FineStrategyFactory
  * @see Book
  * @see CD
  * @see Journal
- *
- * @author malak
  */
 public enum MaterialType {
 

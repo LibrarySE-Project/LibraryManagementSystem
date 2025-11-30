@@ -28,12 +28,12 @@ import librarySE.utils.ValidationUtils;
  *   <li>{@link CD}</li>
  *   <li>{@link Journal}</li>
  * </ul>
- *
+ * 
+ * @author Eman
  * @see LibraryItem
  * @see Book
  * @see CD
  * @see Journal
- * @author Malak
  */
 public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
 

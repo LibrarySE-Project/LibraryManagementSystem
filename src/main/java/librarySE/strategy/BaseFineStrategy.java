@@ -9,9 +9,9 @@ import java.math.BigDecimal;
  * {@link #getBorrowPeriodDays()}, while allowing subclasses to define their
  * own fine rate and borrow period.
  * </p>
- *
+ * 
+ * @author Eman
  * @see FineStrategy
- * @author Malak
  */
 public abstract class BaseFineStrategy implements FineStrategy {
 

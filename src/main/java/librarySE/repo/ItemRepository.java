@@ -29,8 +29,8 @@ import java.util.List;
  * items.add(new Book("123", "Clean Code", "Robert C. Martin"));
  * repo.saveAll(items);
  * }</pre>
- *
- * @author 
+ * 
+ * @author Malak
  * @see librarySEv2.core.LibraryItem
  * @see librarySEv2.repo.FileItemRepository
  */

@@ -50,10 +50,10 @@ import java.time.temporal.ChronoUnit;
  * System.out.println(record);
  * }</pre>
  *
+ * @author Eman
  * @see User
  * @see LibraryItem
  * @see FineStrategy
- * @author Malak
  */
 public class BorrowRecord implements Serializable {
 

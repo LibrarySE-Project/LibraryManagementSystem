@@ -28,7 +28,7 @@ import java.util.List;
  * manager.exportFinesCsv(LocalDate.now());
  * </pre>
  *
- * @author Hi
+ * @author Malak
  * @version 1.0
  */
 public class ReportManager {

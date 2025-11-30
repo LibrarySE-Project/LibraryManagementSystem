@@ -29,10 +29,10 @@ import librarySE.utils.ValidationUtils;
  * // [JOURNAL] AI Research Monthly [Vol. 15] edited by Dr. Smith (Price:29.99) — Available
  * }</pre>
  *
+ * @author Malak
  * @see AbstractLibraryItem
  * @see MaterialType
  * @see ValidationUtils
- * @author Malak
  */
 public class Journal extends AbstractLibraryItem {
 

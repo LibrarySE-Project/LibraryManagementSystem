@@ -37,10 +37,10 @@ import java.math.BigDecimal;
  * System.out.println("CD allowed period: " + cdFine.getBorrowPeriodDays());
  * }</pre>
  *
+ * @author Malak
  * @see FineStrategy
  * @see BaseFineStrategy
  * @see Config
- * @author Malak
  */
 public final class FineStrategyFactory {
 

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  * <p><strong>Thread-safety:</strong> Uses {@link CopyOnWriteArrayList} to safely access
  * borrowing records concurrently without risking modification conflicts.</p>
  *
- * @author 
+ * @author Eman
  */
 public class ActivityReportService {
 

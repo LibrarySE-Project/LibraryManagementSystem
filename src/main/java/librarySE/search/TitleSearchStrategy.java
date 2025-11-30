@@ -16,7 +16,8 @@ import librarySE.utils.ValidationUtils;
  * SearchStrategy strategy = new TitleSearchStrategy();
  * boolean found = strategy.matches(book, "networking");
  * }</pre>
- *
+ * 
+ * @author Eman
  * @see librarySE.core.LibraryItem#getTitle()
  * @see ValidationUtils
  * @see SearchStrategy

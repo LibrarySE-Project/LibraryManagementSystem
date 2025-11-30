@@ -4,43 +4,54 @@ import librarySE.managers.User;
 import librarySE.core.EmailService;
 
 /**
- * {@code EmailNotifier} is an implementation of {@link Notifier}
- * that delivers notifications to users via email using {@link EmailService}.
- * <p>
- * It retrieves user email addresses from the {@link User} object and sends
- * messages through Gmail SMTP configured in the .env file.
- * </p>
+ * {@code EmailNotifier} is a concrete implementation of {@link Notifier}
+ * that sends notifications to users via email using {@link EmailService}.
+ *
+ * <p>This class uses dependency injection to allow substituting
+ * a fake or mock email service during unit testing.</p>
  *
  * <h2>Usage Example:</h2>
  * <pre>{@code
  * Notifier notifier = new EmailNotifier();
- * notifier.notify(user, "📚 A new book has been added to the library!");
+ * notifier.notify(user, "📚 New Book!", "A new item was added to the library.");
  * }</pre>
  *
- * <p>Make sure your <b>.env</b> file contains:</p>
+ * <p>Make sure your <b>.env</b> file contains valid SMTP credentials:</p>
  * <pre>
  * EMAIL_USERNAME=your_email@gmail.com
  * EMAIL_PASSWORD=your_app_password
  * </pre>
  *
- * @author 
+ * @author Eman
  */
 public class EmailNotifier implements Notifier {
 
-    /** Email service used for sending notifications. */
-    private final EmailService emailService = new EmailService();
+    /** The email service used to send messages. */
+    private final EmailService emailService;
+
     /**
-     * Sends an email notification to the specified user with a given subject.
+     * Default constructor that uses the real {@link EmailService}.
+     */
+    public EmailNotifier() {
+        this.emailService = new EmailService();
+    }
+
+    /**
+     * Constructor used for dependency injection during testing.
      *
-     * <p>This method validates the input parameters and sends the email through
-     * the configured {@code emailService}. The message body is automatically
-     * prefixed with a greeting and signed by the library system.</p>
+     * @param emailService a custom email service (fake or mock)
+     */
+    public EmailNotifier(EmailService emailService) {
+        this.emailService = emailService;
+    }
+
+    /**
+     * Sends an email notification to the specified user.
      *
-     * @param user     the recipient {@link User}; must not be {@code null}
-     * @param subject  the subject line of the email; must not be {@code null} or blank
-     * @param message  the message body to send; must not be {@code null} or blank
-     * @throws IllegalArgumentException if any parameter is {@code null} or blank
-     * @throws RuntimeException if sending the email fails
+     * @param user    recipient user (must not be {@code null})
+     * @param subject subject line (must not be blank)
+     * @param message message body (must not be blank)
+     * @throws IllegalArgumentException if any argument is invalid
      */
     @Override
     public void notify(User user, String subject, String message) {
@@ -52,9 +63,10 @@ public class EmailNotifier implements Notifier {
             throw new IllegalArgumentException("Message cannot be null or empty.");
 
         String to = user.getEmail();
-        String body = "Dear " + user.getUsername() + ",\n\n" + message + "\n\n— Library System";
+        String body = "Dear " + user.getUsername() + ",\n\n" +
+                message + "\n\n— Library System";
 
         emailService.sendEmail(to, subject, body);
     }
-
 }
+

@@ -32,8 +32,8 @@ import java.util.List;
  * records.add(new BorrowRecord(user, item, fineStrategy, LocalDate.now()));
  * repo.saveAll(records);
  * }</pre>
- *
- * @author 
+ * 
+ * @author Eman
  * @see librarySEv2.managers.BorrowRecord
  * @see librarySEv2.repo.FileBorrowRecordRepository
  */

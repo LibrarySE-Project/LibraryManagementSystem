@@ -25,6 +25,7 @@ import librarySE.core.LibraryItem;
  * results = context.search(items, "bloch");
  * }</pre>
  *
+ * @author Malak
  * @see SearchStrategy
  * @see TitleSearchStrategy
  * @see KeywordSearchStrategy

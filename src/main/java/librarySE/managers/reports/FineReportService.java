@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  *
  * <p><strong>Thread-safety:</strong> Uses {@link CopyOnWriteArrayList} to allow safe concurrent reads.</p>
  *
- * @author 
+ * @author Malak
  */
 public class FineReportService {
 

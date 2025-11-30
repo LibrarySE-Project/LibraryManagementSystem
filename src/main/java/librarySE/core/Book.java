@@ -32,10 +32,10 @@ import librarySE.utils.ValidationUtils;
  * System.out.println(book.isAvailable());  // false
  * }</pre>
  *
+ * @author Eman
  * @see AbstractLibraryItem
  * @see MaterialType
  * @see ValidationUtils
- * @author malak 
  */
 public class Book extends AbstractLibraryItem {
 

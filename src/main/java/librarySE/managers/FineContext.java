@@ -18,11 +18,11 @@ import librarySE.strategy.FineStrategyFactory;
  * complete flexibility when switching strategies at runtime.
  * </p>
  *
+ * @author Malak
  * @see FineStrategy
  * @see FineStrategyFactory
  * @see BaseFineStrategy
  * @see BorrowRecord
- * @author Malak
  */
 public class FineContext {
 

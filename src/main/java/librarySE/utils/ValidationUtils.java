@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  *
  * <p>All methods are static and thread-safe.</p>
  *
- * @author Malak
+ * @author Eman
  */
 public final class ValidationUtils {
 
