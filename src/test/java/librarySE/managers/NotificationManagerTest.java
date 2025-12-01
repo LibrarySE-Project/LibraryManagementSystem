@@ -156,5 +156,11 @@ class NotificationManagerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> nm.sendReminders(notifier, null));
     }
+    @Test
+    void testConstructorThrowsWhenBorrowManagerNull() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new NotificationManager(null));
+    }
+
 }
 

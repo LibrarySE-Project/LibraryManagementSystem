@@ -1,7 +1,6 @@
 package librarySE.search;
 
 import librarySE.core.LibraryItem;
-import librarySE.utils.ValidationUtils;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;

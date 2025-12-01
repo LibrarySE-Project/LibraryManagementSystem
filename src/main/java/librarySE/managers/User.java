@@ -10,7 +10,7 @@ import librarySE.utils.ValidationUtils;
 /**
  * Represents a system user within the library management system.
  * <p>
- * Each {@code User} has a unique identifier, username, email address,
+ * Each {@code User} has a unique identifier, username,   email address,
  * role (either {@link Role#USER} or {@link Role#ADMIN}), password hash,
  * and a fine balance for overdue materials.
  * </p>

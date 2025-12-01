@@ -114,18 +114,16 @@ public class BorrowManager {
         if (hasOverdue)
             throw new IllegalStateException("Cannot borrow: overdue items exist.");
 
-        synchronized (item) {
-            if (!item.isAvailable()) {
-                WaitlistEntry entry = new WaitlistEntry(item.getId(), user.getEmail(), LocalDate.now());
-                waitlist.add(entry);
-                waitlistRepo.saveAll(waitlist);
-                System.out.println("ℹ️ Item unavailable. User added to waitlist: " + user.getEmail());
-                return false;
-            }
-
-            if (!item.borrow())
-                throw new IllegalStateException("Failed to borrow item.");
+        if (!item.isAvailable()) {
+            WaitlistEntry entry = new WaitlistEntry(item.getId(), user.getEmail(), LocalDate.now());
+            waitlist.add(entry);
+            waitlistRepo.saveAll(waitlist);
+            System.out.println("ℹ️ Item unavailable. User added to waitlist: " + user.getEmail());
+            return false;
         }
+
+        if (!item.borrow())
+            throw new IllegalStateException("Failed to borrow item.");
 
         FineStrategy strategy = item.getMaterialType().createFineStrategy();
         BorrowRecord record = new BorrowRecord(user, item, strategy, today);
@@ -135,8 +133,6 @@ public class BorrowManager {
         System.out.println("✅ Item borrowed successfully: " + item.getTitle() + " by " + user.getUsername());
         return true;
     }
-
-  
 
     /**
      * Marks an item as returned and notifies users waiting for it via email.
@@ -159,25 +155,23 @@ public class BorrowManager {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No active borrowing found."));
 
-        synchronized (item) {
-            record.markReturned(today);
-            List<WaitlistEntry> waitingUsers = waitlist.stream()
-                    .filter(w -> w.getItemId().equals(item.getId()))
-                    .collect(Collectors.toList());
+        record.markReturned(today);
 
-            Notifier notifier = new EmailNotifier();
-            for (WaitlistEntry entry : waitingUsers) {
-                Optional<User> target = UserManager.getInstance()
-                        .findUserByEmail(entry.getUserEmail());
-                target.ifPresent(value ->
-                        notifier.notify(value, "The item \"" + item.getTitle() + "\" is now available!","📚 Good news! The item \"" +
-                                item.getTitle() + "\" you requested is now available for borrowing."));
-            }
+        List<WaitlistEntry> waitingUsers = waitlist.stream()
+                .filter(w -> w.getItemId().equals(item.getId()))
+                .collect(Collectors.toList());
 
-           
-            waitlist.removeIf(w -> w.getItemId().equals(item.getId()));
-            waitlistRepo.saveAll(waitlist);
+        Notifier notifier = new EmailNotifier();
+        for (WaitlistEntry entry : waitingUsers) {
+            Optional<User> target = UserManager.getInstance()
+                    .findUserByEmail(entry.getUserEmail());
+            target.ifPresent(value ->
+                    notifier.notify(value, "The item \"" + item.getTitle() + "\" is now available!",
+                            "📚 Good news! The item \"" + item.getTitle() + "\" you requested is now available for borrowing."));
         }
+
+        waitlist.removeIf(w -> w.getItemId().equals(item.getId()));
+        waitlistRepo.saveAll(waitlist);
 
         borrowRepo.saveAll(borrowRecords);
         System.out.println("✅ Item returned successfully: " + item.getTitle());

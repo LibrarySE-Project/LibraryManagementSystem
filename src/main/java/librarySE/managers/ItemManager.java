@@ -4,6 +4,7 @@ import librarySE.core.LibraryItem;
 import librarySE.managers.notifications.EmailNotifier;
 import librarySE.repo.ItemRepository;
 import librarySE.search.SearchStrategy;
+import librarySE.utils.LoggerUtils;
 import librarySE.utils.ValidationUtils;
 
 import java.util.*;
@@ -131,8 +132,10 @@ public class ItemManager {
 				emailNotifier.notify(user, subject, message);
             }
         } catch (Exception e) {
-            System.err.println("Warning: Failed to notify users → " + e.getMessage());
+            LoggerUtils.log("notification_errors.txt",
+                    "Failed to notify users → " + e.getMessage());
         }
+
     }
 
     /**
@@ -188,4 +191,5 @@ public class ItemManager {
     public List<LibraryItem> getAllItems() {
         return List.copyOf(items);
     }
+
 }

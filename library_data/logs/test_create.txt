@@ -1,0 +1,1 @@
+[2025-12-01T23:29:24.087523700] [LoggerUtilsTest.testLog_createsNewFileAndWritesContent] Hello

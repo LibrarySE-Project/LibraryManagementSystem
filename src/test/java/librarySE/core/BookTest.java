@@ -11,24 +11,13 @@ import org.junit.jupiter.api.Test;
 import librarySE.utils.Config;
 
 /**
- * Unit tests for {@link Book}.
- * 
- * <p>This test suite covers:</p>
- * <ul>
- *   <li>Constructor validation</li>
- *   <li>Smart price loading logic</li>
- *   <li>Field setters</li>
- *   <li>Keyword matching</li>
- *   <li>Borrow/return behavior (inherited)</li>
- *   <li>equals / hashCode</li>
- *   <li>toString()</li>
- * </ul>
+ * Full test suite for {@link Book}.
+ * Covers all positive, negative, and edge-case scenarios.
  */
 class BookTest {
 
     private Book book;
 
-    //  Test Lifecycle
     @BeforeEach
     void setUp() {
         book = new Book("123-ABC", "My Book", "Author Name", BigDecimal.valueOf(50));
@@ -39,7 +28,10 @@ class BookTest {
         book = null;
     }
 
-    //  Constructor Test
+    // ----------------------------------------------------------
+    // Constructor Tests
+    // ----------------------------------------------------------
+
     @Test
     void testConstructor_ValidData() {
         assertEquals("123-ABC", book.getIsbn());
@@ -49,45 +41,64 @@ class BookTest {
     }
 
     @Test
-    void testConstructor_PriceNull_UsesDefault() {
-        double defaultPrice = Config.getDouble("price.book.default", 0.0);
+    void testConstructor_PriceNull_UsesDefaultConfig() {
+        double def = Config.getDouble("price.book.default", 0.0);
         Book b = new Book("111", "Title", "Author", null);
-        assertEquals(BigDecimal.valueOf(defaultPrice), b.getPrice());
+        assertEquals(BigDecimal.valueOf(def), b.getPrice());
     }
 
     @Test
-    void testConstructor_PriceZero_UsesDefault() {
-        double defaultPrice = Config.getDouble("price.book.default", 0.0);
+    void testConstructor_PriceZero_UsesDefaultConfig() {
+        double def = Config.getDouble("price.book.default", 0.0);
         Book b = new Book("222", "Title", "Author", BigDecimal.ZERO);
-        assertEquals(BigDecimal.valueOf(defaultPrice), b.getPrice());
+        assertEquals(BigDecimal.valueOf(def), b.getPrice());
     }
 
     @Test
     void testConstructor_InvalidISBN_Throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> new Book("", "Title", "Author", BigDecimal.TEN));
+            () -> new Book("", "Title", "Author", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+            () -> new Book("   ", "Title", "Author", BigDecimal.TEN));
     }
 
     @Test
     void testConstructor_InvalidTitle_Throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> new Book("123", " ", "Author", BigDecimal.TEN));
+            () -> new Book("123", " ", "Author", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+            () -> new Book("123", null, "Author", BigDecimal.TEN));
     }
 
     @Test
     void testConstructor_InvalidAuthor_Throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> new Book("123", "Title", "", BigDecimal.TEN));
+            () -> new Book("123", "Title", "", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+            () -> new Book("123", "Title", null, BigDecimal.TEN));
+    }
+
+    @Test
+    void testConstructor_TitleAndAuthorAreTrimmed() {
+        Book b = new Book("789", "   A Title  ", "  An Author ", BigDecimal.TEN);
+        assertEquals("A Title", b.getTitle());
+        assertEquals("An Author", b.getAuthor());
     }
 
     // ----------------------------------------------------------
-    //  Setter Tests
+    // Setter Tests
     // ----------------------------------------------------------
 
     @Test
     void testSetTitle_Valid() {
-        book.setTitle("New Title");
-        assertEquals("New Title", book.getTitle());
+        book.setTitle("New");
+        assertEquals("New", book.getTitle());
+    }
+
+    @Test
+    void testSetTitle_Trimmed() {
+        book.setTitle("   Clean Title   ");
+        assertEquals("Clean Title", book.getTitle());
     }
 
     @Test
@@ -99,34 +110,50 @@ class BookTest {
 
     @Test
     void testSetAuthor_Valid() {
-        book.setAuthor("New Author");
-        assertEquals("New Author", book.getAuthor());
+        book.setAuthor("Someone New");
+        assertEquals("Someone New", book.getAuthor());
+    }
+
+    @Test
+    void testSetAuthor_Trimmed() {
+        book.setAuthor("  Alice  ");
+        assertEquals("Alice", book.getAuthor());
     }
 
     @Test
     void testSetAuthor_Invalid_Throws() {
         assertThrows(IllegalArgumentException.class, () -> book.setAuthor(""));
-        assertThrows(IllegalArgumentException.class, () -> book.setAuthor("  "));
+        assertThrows(IllegalArgumentException.class, () -> book.setAuthor("   "));
         assertThrows(IllegalArgumentException.class, () -> book.setAuthor(null));
     }
 
     // ----------------------------------------------------------
-    //  Keyword Matching
+    // Keyword Matching Tests
     // ----------------------------------------------------------
 
     @Test
-    void testMatchesKeyword_TitleMatch() {
+    void testMatchesKeyword_Title() {
         assertTrue(book.matchesKeyword("My"));
     }
 
     @Test
-    void testMatchesKeyword_AuthorMatch() {
+    void testMatchesKeyword_Author() {
         assertTrue(book.matchesKeyword("Author"));
     }
 
     @Test
-    void testMatchesKeyword_IsbnMatch() {
+    void testMatchesKeyword_Isbn() {
         assertTrue(book.matchesKeyword("123"));
+    }
+
+    @Test
+    void testMatchesKeyword_FullMatch() {
+        assertTrue(book.matchesKeyword("My Book"));
+    }
+
+    @Test
+    void testMatchesKeyword_CaseInsensitive() {
+        assertTrue(book.matchesKeyword("author"));
     }
 
     @Test
@@ -135,17 +162,14 @@ class BookTest {
     }
 
     @Test
-    void testMatchesKeyword_Null_Throws() {
+    void testMatchesKeyword_Invalid_Throws() {
         assertThrows(IllegalArgumentException.class, () -> book.matchesKeyword(null));
-    }
-
-    @Test
-    void testMatchesKeyword_Empty_Throws() {
         assertThrows(IllegalArgumentException.class, () -> book.matchesKeyword(""));
+        assertThrows(IllegalArgumentException.class, () -> book.matchesKeyword("   "));
     }
 
     // ----------------------------------------------------------
-    //  Borrow / Return Tests (Inherited)
+    // Borrow / Return Tests
     // ----------------------------------------------------------
 
     @Test
@@ -155,7 +179,7 @@ class BookTest {
     }
 
     @Test
-    void testBorrow_FailsWhenAlreadyBorrowed() {
+    void testBorrow_WhenAlreadyBorrowed_Fails() {
         book.borrow();
         assertFalse(book.borrow());
     }
@@ -168,25 +192,44 @@ class BookTest {
     }
 
     @Test
-    void testReturn_FailsWhenNotBorrowed() {
+    void testReturn_WhenNotBorrowed_Fails() {
         assertFalse(book.returnItem());
     }
 
+    @Test
+    void testMultipleBorrowReturnCycles() {
+        for (int i = 0; i < 5; i++) {
+            assertTrue(book.borrow());
+            assertFalse(book.isAvailable());
+            assertTrue(book.returnItem());
+            assertTrue(book.isAvailable());
+        }
+    }
+    @Test
+    void testGetMaterialType_ReturnsBook() {
+        assertEquals(MaterialType.BOOK, book.getMaterialType());
+    }
+
     // ----------------------------------------------------------
-    //  equals / hashCode
+    // equals() and hashCode()
     // ----------------------------------------------------------
 
     @Test
     void testEquals_SameISBN_True() {
-        Book b2 = new Book("123-ABC", "Another", "A", BigDecimal.TEN);
+        Book b2 = new Book("123-ABC", "X", "Y", BigDecimal.ONE);
         assertTrue(book.equals(b2));
         assertEquals(book.hashCode(), b2.hashCode());
     }
 
     @Test
     void testEquals_DifferentISBN_False() {
-        Book b2 = new Book("ZZZ", "Other", "A", BigDecimal.TEN);
+        Book b2 = new Book("XXX", "X", "Y", BigDecimal.ONE);
         assertFalse(book.equals(b2));
+    }
+
+    @Test
+    void testEquals_SameInstance_True() {
+        assertTrue(book.equals(book));
     }
 
     @Test
@@ -199,12 +242,37 @@ class BookTest {
         assertFalse(book.equals("Hello"));
     }
 
-    //  toString()
+    // ----------------------------------------------------------
+    // toString() Tests
+    // ----------------------------------------------------------
+
     @Test
     void testToString_NotNull() {
         assertNotNull(book.toString());
-        assertTrue(book.toString().contains("BOOK"));
     }
+
+    @Test
+    void testToString_ContainsFields() {
+        String s = book.toString();
+        assertTrue(s.contains("BOOK"));
+        assertTrue(s.contains(book.getTitle()));
+        assertTrue(s.contains(book.getAuthor()));
+        assertTrue(s.contains(book.getIsbn()));
+        assertTrue(s.contains(book.getPrice().toPlainString()));
+    }
+    @Test
+    void testToString_AvailableState() {
+        String text = book.toString();
+        assertTrue(text.contains("Available"));
+        assertTrue(text.contains("[BOOK]"));
+        assertTrue(text.contains(book.getIsbn()));
+    }
+    @Test
+    void testToString_BorrowedState() {
+        book.borrow(); 
+        String text = book.toString();
+        assertTrue(text.contains("Borrowed"));
+    }
+
+
 }
-
-

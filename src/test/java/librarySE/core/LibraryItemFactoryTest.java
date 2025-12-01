@@ -16,12 +16,19 @@ import librarySE.utils.Config;
 class LibraryItemFactoryTest {
 
     @BeforeEach
-    void setUp() {}
+    void setUp() {
+        // no shared state needed yet
+    }
 
     @AfterEach
-    void tearDown() {}
+    void tearDown() {
+        // nothing to clean for now
+    }
 
-    // Book Creation Tests
+    // ----------------------------------------------------------
+    //  Book Creation Tests
+    // ----------------------------------------------------------
+
     @Test
     void testCreateBook_WithExplicitPrice() {
         LibraryItem item = LibraryItemFactory.create(
@@ -52,7 +59,10 @@ class LibraryItemFactoryTest {
         assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
     }
 
-    // CD Creation Tests
+    // ----------------------------------------------------------
+    //  CD Creation Tests
+    // ----------------------------------------------------------
+
     @Test
     void testCreateCD_WithExplicitPrice() {
         LibraryItem item = LibraryItemFactory.create(
@@ -80,7 +90,10 @@ class LibraryItemFactoryTest {
         assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
     }
 
-    // Journal Creation Tests
+    // ----------------------------------------------------------
+    //  Journal Creation Tests
+    // ----------------------------------------------------------
+
     @Test
     void testCreateJournal_WithExplicitPrice() {
         LibraryItem item = LibraryItemFactory.create(
@@ -110,7 +123,10 @@ class LibraryItemFactoryTest {
         assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
     }
 
-    // Invalid Input Tests
+    // ----------------------------------------------------------
+    //  Missing-Args Negative Tests
+    // ----------------------------------------------------------
+
     @Test
     void testCreateBook_MissingArgs_Throws() {
         assertThrows(ArrayIndexOutOfBoundsException.class,
@@ -129,8 +145,12 @@ class LibraryItemFactoryTest {
                 () -> LibraryItemFactory.create(MaterialType.JOURNAL, "Title"));
     }
 
+    // ----------------------------------------------------------
+    //  Invalid Price Negative Tests
+    // ----------------------------------------------------------
+
     @Test
-    void testCreate_WithInvalidPrice_Throws() {
+    void testCreateBook_InvalidPrice_Throws() {
         assertThrows(NumberFormatException.class,
                 () -> LibraryItemFactory.create(
                         MaterialType.BOOK,
@@ -138,6 +158,41 @@ class LibraryItemFactoryTest {
                         "Title",
                         "Author",
                         "NOT_A_NUMBER"
+                ));
+    }
+
+    @Test
+    void testCreateBook_EmptyPrice_Throws() {
+        assertThrows(NumberFormatException.class,
+                () -> LibraryItemFactory.create(
+                        MaterialType.BOOK,
+                        "ISBN",
+                        "Title",
+                        "Author",
+                        ""
+                ));
+    }
+
+    @Test
+    void testCreateCD_InvalidPrice_Throws() {
+        assertThrows(NumberFormatException.class,
+                () -> LibraryItemFactory.create(
+                        MaterialType.CD,
+                        "Album",
+                        "Singer",
+                        "abc"
+                ));
+    }
+
+    @Test
+    void testCreateJournal_InvalidPrice_Throws() {
+        assertThrows(NumberFormatException.class,
+                () -> LibraryItemFactory.create(
+                        MaterialType.JOURNAL,
+                        "Science",
+                        "Editor",
+                        "Vol 1",
+                        "NaN"
                 ));
     }
 }
