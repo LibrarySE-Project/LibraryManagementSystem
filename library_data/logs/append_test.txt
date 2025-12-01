@@ -1,0 +1,2 @@
+[2025-12-01T23:29:24.089537600] [LoggerUtilsTest.testLog_appendsToExistingFile] First
+[2025-12-01T23:29:24.089537600] [LoggerUtilsTest.testLog_appendsToExistingFile] Second

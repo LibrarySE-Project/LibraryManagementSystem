@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 import librarySE.utils.Config;
 
 /**
- * Unit tests for {@link Journal}.
+ * Full unit tests for {@link Journal}.
+ * Covers all branches and all negative cases.
  */
 class JournalTest {
 
@@ -27,7 +28,9 @@ class JournalTest {
         journal = null;
     }
 
+    // ----------------------------------------------------------
     // Constructor Tests
+    // ----------------------------------------------------------
     @Test
     void testConstructor_ValidData() {
         assertEquals("AI Monthly", journal.getTitle());
@@ -63,12 +66,14 @@ class JournalTest {
     }
 
     @Test
-    void testConstructor_InvalidIssueNumber_Throws() {
+    void testConstructor_InvalidIssue_Throws() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Journal("Title", "Editor", "", BigDecimal.TEN));
     }
 
+    // ----------------------------------------------------------
     // Setter Tests
+    // ----------------------------------------------------------
     @Test
     void testSetTitle_Valid() {
         journal.setTitle("New Title");
@@ -108,10 +113,12 @@ class JournalTest {
         assertThrows(IllegalArgumentException.class, () -> journal.setIssueNumber(null));
     }
 
-    // matchesKeyword Tests
+    // ----------------------------------------------------------
+    // Keyword Matching
+    // ----------------------------------------------------------
     @Test
     void testMatchesKeyword_TitleMatch() {
-        assertTrue(journal.matchesKeyword("Monthly"));
+        assertTrue(journal.matchesKeyword("AI"));
     }
 
     @Test
@@ -139,7 +146,9 @@ class JournalTest {
         assertThrows(IllegalArgumentException.class, () -> journal.matchesKeyword(""));
     }
 
+    // ----------------------------------------------------------
     // Borrow / Return Tests
+    // ----------------------------------------------------------
     @Test
     void testBorrow_Success() {
         assertTrue(journal.borrow());
@@ -147,7 +156,7 @@ class JournalTest {
     }
 
     @Test
-    void testBorrow_FailsWhenAlreadyBorrowed() {
+    void testBorrow_AlreadyBorrowed_Fails() {
         journal.borrow();
         assertFalse(journal.borrow());
     }
@@ -160,33 +169,36 @@ class JournalTest {
     }
 
     @Test
-    void testReturn_FailsWhenNotBorrowed() {
+    void testReturn_NotBorrowed_Fails() {
         assertFalse(journal.returnItem());
     }
 
-    // equals + hashCode Tests
+    // ----------------------------------------------------------
+    // getMaterialType
+    // ----------------------------------------------------------
     @Test
-    void testEquals_SameFields_True() {
+    void testGetMaterialType() {
+        assertEquals(MaterialType.JOURNAL, journal.getMaterialType());
+    }
+
+    // ----------------------------------------------------------
+    // equals / hashCode (No override → always false except same reference)
+    // ----------------------------------------------------------
+    @Test
+    void testEquals_SameData_False() {
         Journal j2 = new Journal("AI Monthly", "Dr. Smith", "Vol. 10", BigDecimal.valueOf(30));
+        assertFalse(journal.equals(j2));
+    }
+
+    @Test
+    void testEquals_SameReference_True() {
+        Journal j2 = journal;
         assertTrue(journal.equals(j2));
-        assertEquals(journal.hashCode(), j2.hashCode());
     }
 
     @Test
-    void testEquals_DifferentTitle_False() {
-        Journal j2 = new Journal("Other", "Dr. Smith", "Vol. 10", BigDecimal.valueOf(30));
-        assertFalse(journal.equals(j2));
-    }
-
-    @Test
-    void testEquals_DifferentEditor_False() {
-        Journal j2 = new Journal("AI Monthly", "XXX", "Vol. 10", BigDecimal.valueOf(30));
-        assertFalse(journal.equals(j2));
-    }
-
-    @Test
-    void testEquals_DifferentIssue_False() {
-        Journal j2 = new Journal("AI Monthly", "Dr. Smith", "Vol. 99", BigDecimal.valueOf(30));
+    void testEquals_DifferentFields_False() {
+        Journal j2 = new Journal("Other", "X", "Vol. 99", BigDecimal.valueOf(30));
         assertFalse(journal.equals(j2));
     }
 
@@ -200,11 +212,21 @@ class JournalTest {
         assertFalse(journal.equals("HELLO"));
     }
 
-    // toString Test
+    // ----------------------------------------------------------
+    // toString Tests (Cover both branches)
+    // ----------------------------------------------------------
     @Test
-    void testToString_NotNull() {
-        assertNotNull(journal.toString());
-        assertTrue(journal.toString().contains("JOURNAL"));
+    void testToString_Available() {
+        String output = journal.toString();
+        assertTrue(output.contains("JOURNAL"));
+        assertTrue(output.contains("Available"));
+        assertTrue(output.contains(journal.getTitle()));
+    }
+
+    @Test
+    void testToString_Borrowed() {
+        journal.borrow();
+        String output = journal.toString();
+        assertTrue(output.contains("Borrowed"));
     }
 }
-

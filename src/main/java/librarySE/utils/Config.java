@@ -37,6 +37,7 @@ public final class Config {
 
     /** Main configuration file that holds fine and system settings. */
     private static final Path CONFIG_FILE = CONFIG_DIR.resolve("fine-config.properties");
+    
 
     // --- Static initialization block ---
     static {
@@ -45,7 +46,7 @@ public final class Config {
             if (!Files.exists(CONFIG_DIR)) Files.createDirectories(CONFIG_DIR);
 
             
-            if (!Files.exists(CONFIG_FILE)) {
+            if (!Files.exists(getConfigFile())) {
                 String defaults = """
                     fine.book.rate=10
                     fine.book.period=28
@@ -58,7 +59,7 @@ public final class Config {
                     price.journal.default=29.99
                     notifications.enabled=true
                     """;
-                Files.writeString(CONFIG_FILE, defaults);
+                Files.writeString(getConfigFile(), defaults);
             }
            
             reload();
@@ -80,7 +81,7 @@ public final class Config {
      * </p>
      */
     public static synchronized void reload() {
-        try (FileInputStream in = new FileInputStream(CONFIG_FILE.toFile())) {
+        try (FileInputStream in = new FileInputStream(getConfigFile().toFile())) {
             PROPS.clear();
             PROPS.load(in);
         } catch (IOException e) {
@@ -150,10 +151,19 @@ public final class Config {
      */
     public static synchronized void set(String key, String value) {
         PROPS.setProperty(key, value);
-        try (OutputStream out = Files.newOutputStream(CONFIG_FILE)) {
+        try (OutputStream out = Files.newOutputStream(getConfigFile())) {
             PROPS.store(out, "Updated " + key + " at " + java.time.LocalDateTime.now());
         } catch (IOException e) {
             System.err.println("⚠️ Failed to save config: " + e.getMessage());
         }
     }
+
+
+
+	/**
+	 * @return the configFile
+	 */
+	public static Path getConfigFile() {
+		return CONFIG_FILE;
+	}
 }

@@ -38,7 +38,7 @@ public final class ValidationUtils {
      * @throws IllegalArgumentException if {@code value} is {@code null} or empty
      */
     public static void requireNonEmpty(Object value, String field) {
-        if (value == null && !(value instanceof String))
+        if (value == null)
             throw new IllegalArgumentException(field + " must not be null.");
 
         if (value instanceof String str && str.trim().isBlank())

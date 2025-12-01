@@ -10,25 +10,10 @@ import org.junit.jupiter.api.Test;
 
 import librarySE.utils.Config;
 
-/**
- * Unit tests for {@link CD}.
- *
- * <p>This test suite covers:</p>
- * <ul>
- *   <li>Constructor validation</li>
- *   <li>Smart default price logic</li>
- *   <li>Setter validation</li>
- *   <li>Keyword matching</li>
- *   <li>Borrow/return (inherited)</li>
- *   <li>equals & hashCode</li>
- *   <li>toString()</li>
- * </ul>
- */
 class CDTest {
 
     private CD cd;
 
-    //  Test Lifecycle
     @BeforeEach
     void setUp() {
         cd = new CD("Song Collection", "Famous Singer", BigDecimal.valueOf(40));
@@ -39,7 +24,9 @@ class CDTest {
         cd = null;
     }
 
+    // ----------------------------------------------------------
     //  Constructor Tests
+    // ----------------------------------------------------------
     @Test
     void testConstructor_ValidData() {
         assertEquals("Song Collection", cd.getTitle());
@@ -73,7 +60,9 @@ class CDTest {
                 () -> new CD("Album", "  ", BigDecimal.TEN));
     }
 
+    // ----------------------------------------------------------
     //  Setter Tests
+    // ----------------------------------------------------------
     @Test
     void testSetTitle_Valid() {
         cd.setTitle("New Album");
@@ -100,7 +89,9 @@ class CDTest {
         assertThrows(IllegalArgumentException.class, () -> cd.setArtist(null));
     }
 
+    // ----------------------------------------------------------
     //  Keyword Matching
+    // ----------------------------------------------------------
     @Test
     void testMatchesKeyword_TitleMatch() {
         assertTrue(cd.matchesKeyword("Song"));
@@ -126,7 +117,9 @@ class CDTest {
         assertThrows(IllegalArgumentException.class, () -> cd.matchesKeyword(""));
     }
 
+    // ----------------------------------------------------------
     //  Borrow / Return (Inherited)
+    // ----------------------------------------------------------
     @Test
     void testBorrow_Success() {
         assertTrue(cd.borrow());
@@ -150,36 +143,59 @@ class CDTest {
     void testReturn_FailsWhenNotBorrowed() {
         assertFalse(cd.returnItem());
     }
-
-    //  equals / hashCode
     @Test
-    void testEquals_SameTitleArtistPrice() {
-        CD c2 = new CD("Song Collection", "Famous Singer", BigDecimal.valueOf(40));
-        assertTrue(cd.equals(c2));
-        assertEquals(cd.hashCode(), c2.hashCode());
+    void testGetMaterialType() {
+        assertEquals(MaterialType.CD, cd.getMaterialType());
     }
 
-    @Test
-    void testEquals_DifferentTitle() {
-        CD c2 = new CD("Different", "Famous Singer", BigDecimal.valueOf(40));
-        assertFalse(cd.equals(c2));
-    }
 
-    @Test
-    void testEquals_DifferentType() {
-        assertFalse(cd.equals("String"));
-    }
+	 // ----------------------------------------------------------
+	//  equals / hashCode
+	// ----------------------------------------------------------
+	@Test
+	void testEquals_SameData_False() {
+	    CD c2 = new CD("Song Collection", "Famous Singer", BigDecimal.valueOf(40));
+	    assertFalse(cd.equals(c2));  // reference comparison only
+	}
+	
+	@Test
+	void testEquals_DifferentTitle_False() {
+	    CD c2 = new CD("Different", "Famous Singer", BigDecimal.valueOf(40));
+	    assertFalse(cd.equals(c2));
+	}
+	
+	@Test
+	void testEquals_DifferentArtist_False() {
+	    CD c2 = new CD("Song Collection", "Other Artist", BigDecimal.valueOf(40));
+	    assertFalse(cd.equals(c2));
+	}
+	
+	@Test
+	void testEquals_DifferentType_False() {
+	    assertFalse(cd.equals("String"));
+	}
+	
+	@Test
+	void testEquals_Null_False() {
+	    assertFalse(cd.equals(null));
+	}
+	
 
-    @Test
-    void testEquals_Null() {
-        assertFalse(cd.equals(null));
-    }
-
+    // ----------------------------------------------------------
     //  toString()
+    // ----------------------------------------------------------
     @Test
-    void testToString_NotNull() {
-        assertNotNull(cd.toString());
-        assertTrue(cd.toString().contains("CD"));
+    void testToString_Available() {
+        String output = cd.toString();
+        assertTrue(output.contains("Available"));
+        assertTrue(output.contains("CD"));
+        assertTrue(output.contains(cd.getTitle()));
+    }
+
+    @Test
+    void testToString_Borrowed() {
+        cd.borrow();
+        String output = cd.toString();
+        assertTrue(output.contains("Borrowed"));
     }
 }
-

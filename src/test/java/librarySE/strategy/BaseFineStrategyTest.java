@@ -12,7 +12,7 @@ class BaseFineStrategyTest {
 
     private BaseFineStrategy strategy;
 
-    // Dummy strategy to test abstract class
+    // Dummy valid strategy
     static class DummyStrategy extends BaseFineStrategy {
         DummyStrategy() {
             super(BigDecimal.valueOf(10), 5);
@@ -29,6 +29,10 @@ class BaseFineStrategyTest {
         strategy = null;
     }
 
+    // ============================
+    // calculateFine() tests
+    // ============================
+
     @Test
     void testCalculateFineZeroDays() {
         assertEquals(BigDecimal.ZERO, strategy.calculateFine(0));
@@ -44,33 +48,40 @@ class BaseFineStrategyTest {
         assertEquals(BigDecimal.ZERO, strategy.calculateFine(-10));
     }
 
+    // ============================
+    // getBorrowPeriodDays()
+    // ============================
+
     @Test
     void testBorrowPeriod() {
         assertEquals(5, strategy.getBorrowPeriodDays());
     }
 
+    // ============================
+    // Constructor validation tests
+    // ============================
+
     @Test
     void testConstructorRejectsNegativeRate() {
         assertThrows(IllegalArgumentException.class,
-                () -> new DummyInvalidRate());
-    }
-
-    static class DummyInvalidRate extends BaseFineStrategy {
-        DummyInvalidRate() {
-            super(BigDecimal.valueOf(-1), 5);
-        }
+                () -> new BaseFineStrategy(BigDecimal.valueOf(-1), 5) {});
     }
 
     @Test
-    void testConstructorRejectsInvalidPeriod() {
+    void testConstructorRejectsInvalidPeriod_Zero() {
         assertThrows(IllegalArgumentException.class,
-                () -> new DummyInvalidPeriod());
+                () -> new BaseFineStrategy(BigDecimal.valueOf(10), 0) {});
     }
 
-    static class DummyInvalidPeriod extends BaseFineStrategy {
-        DummyInvalidPeriod() {
-            super(BigDecimal.valueOf(10), 0);
-        }
+    @Test
+    void testConstructorRejectsInvalidPeriod_Negative() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseFineStrategy(BigDecimal.valueOf(10), -3) {});
+    }
+
+    @Test
+    void testConstructorRejectsNullRate() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseFineStrategy(null, 5) {});
     }
 }
-

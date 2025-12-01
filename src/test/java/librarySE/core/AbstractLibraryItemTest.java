@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,11 +13,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Full unit tests for {@link AbstractLibraryItem}.
- * Includes positive, negative, and edge cases.
+ * Includes positive, negative, edge-cases, and thread-safety.
  */
 class AbstractLibraryItemTest {
 
-    // Dummy subclass for testing the abstract class
+    // Dummy subclass to test the abstract class
     static class DummyItem extends AbstractLibraryItem {
         @Override
         public String getTitle() {
@@ -26,24 +28,28 @@ class AbstractLibraryItemTest {
         public MaterialType getMaterialType() {
             return MaterialType.BOOK;
         }
+
         @Override
         public boolean matchesKeyword(String keyword) {
-            return false; 
+            return false;
         }
-
     }
 
     private DummyItem item;
 
     @BeforeEach
     void setUp() {
-        item = new DummyItem();  // fresh instance before each test
+        item = new DummyItem();
     }
 
     @AfterEach
     void tearDown() {
-        item = null; // cleanup (not required, but you asked to include)
+        item = null;
     }
+
+    // ------------------------------------------------------------
+    // BASIC FUNCTIONALITY TESTS
+    // ------------------------------------------------------------
 
     @Test
     void testGetId_NotNull() {
@@ -58,8 +64,7 @@ class AbstractLibraryItemTest {
 
     @Test
     void testBorrow_Success() {
-        boolean result = item.borrow();
-        assertTrue(result);
+        assertTrue(item.borrow());
         assertFalse(item.isAvailable());
     }
 
@@ -81,6 +86,10 @@ class AbstractLibraryItemTest {
         assertFalse(item.returnItem());
     }
 
+    // ------------------------------------------------------------
+    // PRICE TESTS
+    // ------------------------------------------------------------
+
     @Test
     void testInitialPrice_Zero() {
         assertEquals(BigDecimal.ZERO, item.getPrice());
@@ -93,8 +102,8 @@ class AbstractLibraryItemTest {
     }
 
     @Test
-    void testSetPrice_Null_ThrowsNullPointer() {
-        assertThrows(NullPointerException.class, () -> item.setPrice(null));
+    void testSetPrice_Null_ThrowsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class, () -> item.setPrice(null));
     }
 
     @Test
@@ -104,15 +113,96 @@ class AbstractLibraryItemTest {
     }
 
     @Test
-    void testBorrow_ThreadSafetyBasic() {
-        item.borrow();
-        assertFalse(item.borrow());
+    void testSetPrice_ZeroValue_IsAllowed() {
+        assertDoesNotThrow(() -> item.setPrice(BigDecimal.ZERO));
+        assertEquals(BigDecimal.ZERO, item.getPrice());
     }
 
     @Test
+    void testSetPrice_LargeValue_Success() {
+        BigDecimal large = new BigDecimal("999999999999.99");
+        item.setPrice(large);
+        assertEquals(large, item.getPrice());
+    }
+
+    // ------------------------------------------------------------
+    // THREAD SAFETY TESTS
+    // ------------------------------------------------------------
+
+    @Test
+    void testBorrow_ThreadSafety() throws InterruptedException {
+        int threads = 50;
+        CountDownLatch latch = new CountDownLatch(threads);
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < threads; i++) {
+            new Thread(() -> {
+                if (item.borrow()) {
+                    successCount.incrementAndGet();
+                }
+                latch.countDown();
+            }).start();
+        }
+
+        latch.await();
+
+        // Only ONE thread should succeed
+        assertEquals(1, successCount.get());
+        assertFalse(item.isAvailable());
+    }
+
+    @Test
+    void testReturn_ThreadSafety() throws InterruptedException {
+        item.borrow();
+
+        int threads = 50;
+        CountDownLatch latch = new CountDownLatch(threads);
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < threads; i++) {
+            new Thread(() -> {
+                if (item.returnItem()) {
+                    successCount.incrementAndGet();
+                }
+                latch.countDown();
+            }).start();
+        }
+
+        latch.await();
+
+        // Only one thread should manage to return it
+        assertEquals(1, successCount.get());
+        assertTrue(item.isAvailable());
+    }
+
+    // ------------------------------------------------------------
+    // EXTRA EDGE CASE TESTS
+    // ------------------------------------------------------------
+
+    @Test
     void testToString_NotNull() {
-        // optional but usually good
         assertNotNull(item.toString());
+    }
+
+    @Test
+    void testPriceDoesNotChangeWhenExceptionThrown() {
+        assertEquals(BigDecimal.ZERO, item.getPrice());
+        try {
+            item.setPrice(BigDecimal.valueOf(-5)); // throws
+        } catch (Exception ignored) {}
+
+        // Price must remain unchanged
+        assertEquals(BigDecimal.ZERO, item.getPrice());
+    }
+
+    @Test
+    void testMultipleBorrowReturnCycles() {
+        for (int i = 0; i < 5; i++) {
+            assertTrue(item.borrow());
+            assertFalse(item.isAvailable());
+            assertTrue(item.returnItem());
+            assertTrue(item.isAvailable());
+        }
     }
 }
 

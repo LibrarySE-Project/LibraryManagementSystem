@@ -4,196 +4,324 @@ import librarySE.core.*;
 import librarySE.repo.BorrowRecordRepository;
 import librarySE.repo.UserRepository;
 import librarySE.repo.WaitlistRepository;
-import librarySE.strategy.FineStrategy;
+
+import librarySE.managers.notifications.EmailNotifier;
+import librarySE.managers.notifications.Notifier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
+
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockConstruction;
 
 class BorrowManagerTest {
 
-    // Fake BorrowRecordRepository
+    // ---------- Fake Repositories ----------
     static class FakeBorrowRepo implements BorrowRecordRepository {
         List<BorrowRecord> store = new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<BorrowRecord> loadAll() {
-            return new ArrayList<>(store);
-        }
-
-        @Override
-        public void saveAll(List<BorrowRecord> records) {
-            store.clear();
-            store.addAll(records);
-        }
+        @Override public List<BorrowRecord> loadAll() { return new ArrayList<>(store); }
+        @Override public void saveAll(List<BorrowRecord> records) { store.clear(); store.addAll(records); }
     }
 
-    // Fake WaitlistRepository
     static class FakeWaitlistRepo implements WaitlistRepository {
         List<WaitlistEntry> store = new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<WaitlistEntry> loadAll() {
-            return new ArrayList<>(store);
-        }
-
-        @Override
-        public void saveAll(List<WaitlistEntry> entries) {
-            store.clear();
-            store.addAll(entries);
-        }
+        @Override public List<WaitlistEntry> loadAll() { return new ArrayList<>(store); }
+        @Override public void saveAll(List<WaitlistEntry> entries) { store.clear(); store.addAll(entries); }
     }
 
-    // Fake UserRepository
     static class FakeUserRepo implements UserRepository {
         List<User> users = new CopyOnWriteArrayList<>();
+        @Override public List<User> loadAll() { return new ArrayList<>(users); }
+        @Override public void saveAll(List<User> list) { users.clear(); users.addAll(list); }
+    }
 
-        @Override
-        public List<User> loadAll() {
-            return new ArrayList<>(users);
-        }
+    // Fake Item
+    static class FakeItem extends Book {
+        boolean available = true;
+        boolean borrowResult = true;
 
-        @Override
-        public void saveAll(List<User> list) {
-            users.clear();
-            users.addAll(list);
+        public FakeItem() { super("ISBN", "Title", "Author", BigDecimal.TEN); }
+
+        @Override public boolean isAvailable() { return available; }
+        @Override public boolean borrow() { return borrowResult; }
+    }
+
+    // Fake Notifier
+    static class FakeNotifier implements Notifier {
+        boolean notified = false;
+        User target;
+        @Override public void notify(User u, String sub, String msg) {
+            notified = true;
+            target = u;
         }
     }
 
-    // Test Data
     FakeBorrowRepo borrowRepo;
     FakeWaitlistRepo waitRepo;
     FakeUserRepo userRepo;
 
     User user;
-    LibraryItem book;
-    FineStrategy strategy;
+    FakeItem item;
 
     @BeforeEach
-    void reset() throws Exception {
+    void setup() throws Exception {
 
         // Reset BorrowManager singleton
-        var f1 = BorrowManager.class.getDeclaredField("instance");
-        f1.setAccessible(true);
-        f1.set(null, null);
+        var b = BorrowManager.class.getDeclaredField("instance");
+        b.setAccessible(true);
+        b.set(null, null);
 
         // Reset UserManager singleton
-        var f2 = UserManager.class.getDeclaredField("instance");
-        f2.setAccessible(true);
-        f2.set(null, null);
+        var u = UserManager.class.getDeclaredField("instance");
+        u.setAccessible(true);
+        u.set(null, null);
 
-        // Initialize fake repositories
         borrowRepo = new FakeBorrowRepo();
         waitRepo = new FakeWaitlistRepo();
         userRepo = new FakeUserRepo();
 
-        // Initialize UserManager with repository
         UserManager.init(userRepo);
-        UserManager.getInstance().addUser(new User("M", Role.USER, "pass123", "m@ps.com"));
 
-        user = UserManager.getInstance()
-                .findUserByEmail("m@ps.com")
-                .orElseThrow();
+        user = new User("M", Role.USER, "pass123", "m@ps.com");
+        userRepo.users.add(user);
 
-        // Book constructor requires 4 arguments
-        book = new Book("ISBN", "Title", "Author", BigDecimal.TEN);
+        item = new FakeItem();
 
-        strategy = book.getMaterialType().createFineStrategy();
-
-        // Initialize BorrowManager
         BorrowManager.init(borrowRepo, waitRepo);
     }
 
-    // Borrow success
+    // ---------- Borrow Tests ----------
+
     @Test
     void testBorrowSuccess() {
         BorrowManager bm = BorrowManager.getInstance();
-        boolean ok = bm.borrowItem(user, book);
+
+        boolean ok = bm.borrowItem(user, item);
 
         assertTrue(ok);
-        assertFalse(book.isAvailable());
         assertEquals(1, borrowRepo.store.size());
     }
 
-    // Adds to waitlist when unavailable
     @Test
-    void testBorrowAddsToWaitlistWhenUnavailable() {
+    void testBorrowFailsWhenUserNull() {
+        BorrowManager bm = BorrowManager.getInstance();
+        assertThrows(IllegalArgumentException.class,
+                () -> bm.borrowItem(null, item));
+    }
+
+    @Test
+    void testBorrowFailsWhenItemNull() {
+        BorrowManager bm = BorrowManager.getInstance();
+        assertThrows(IllegalArgumentException.class,
+                () -> bm.borrowItem(user, null));
+    }
+
+    @Test
+    void testBorrowFailsWhenUserHasFine() {
+        user.addFine(BigDecimal.TEN);
+        BorrowManager bm = BorrowManager.getInstance();
+        assertThrows(IllegalStateException.class,
+                () -> bm.borrowItem(user, item));
+    }
+
+    @Test
+    void testBorrowFailsWhenUserHasOverdue() throws Exception {
+
         BorrowManager bm = BorrowManager.getInstance();
 
-        bm.borrowItem(user, book);
+        bm.borrowItem(user, item);
 
-        User user2 = new User("X", Role.USER, "p12345", "x@ps.com");
-        userRepo.users.add(user2);
+        BorrowRecord record = borrowRepo.store.get(0);
 
-        boolean ok = bm.borrowItem(user2, book);
+        var f = BorrowRecord.class.getDeclaredField("borrowDate");
+        f.setAccessible(true);
+        f.set(record, LocalDate.now().minusDays(50));
+
+        borrowRepo.saveAll(borrowRepo.store);
+
+        assertThrows(IllegalStateException.class,
+                () -> bm.borrowItem(user, item));
+    }
+
+
+    @Test
+    void testBorrowAddsToWaitlistWhenUnavailable() {
+        item.available = false;
+        BorrowManager bm = BorrowManager.getInstance();
+
+        boolean ok = bm.borrowItem(user, item);
 
         assertFalse(ok);
         assertEquals(1, waitRepo.store.size());
     }
 
-    // Invalid arguments
     @Test
-    void testBorrowFailsForNullUserOrItem() {
+    void testBorrowFailsWhenBorrowReturnsFalse() {
+        item.borrowResult = false;
         BorrowManager bm = BorrowManager.getInstance();
 
-        assertThrows(IllegalArgumentException.class,
-                () -> bm.borrowItem(null, book));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> bm.borrowItem(user, null));
+        assertThrows(IllegalStateException.class,
+                () -> bm.borrowItem(user, item));
     }
 
-    // Return success
+    // ---------- Return Tests ----------
+
     @Test
-    void testReturnItemSuccess() {
+    void testReturnSuccess() {
+
         BorrowManager bm = BorrowManager.getInstance();
+        bm.borrowItem(user, item);
 
-        bm.borrowItem(user, book);
-        bm.returnItem(user, book);
+        try (MockedConstruction<EmailNotifier> mock =
+                     Mockito.mockConstruction(EmailNotifier.class))
+        {
+            bm.returnItem(user, item);
+        }
 
-        assertTrue(book.isAvailable());
         assertTrue(borrowRepo.store.get(0).isReturned());
     }
 
-    // Return fails when no borrow record exists
     @Test
-    void testReturnItemFailsWhenNotBorrowed() {
+    void testReturnFailsWhenUserNull() {
         BorrowManager bm = BorrowManager.getInstance();
-
         assertThrows(IllegalArgumentException.class,
-                () -> bm.returnItem(user, book));
+                () -> bm.returnItem(null, item));
     }
 
-    // Total fines calculation
+    @Test
+    void testReturnFailsWhenItemNull() {
+        BorrowManager bm = BorrowManager.getInstance();
+        assertThrows(IllegalArgumentException.class,
+                () -> bm.returnItem(user, null));
+    }
+
+    @Test
+    void testReturnFailsWhenNoRecord() {
+        BorrowManager bm = BorrowManager.getInstance();
+        assertThrows(IllegalArgumentException.class,
+                () -> bm.returnItem(user, item));
+    }
+
+    @Test
+    void testReturnClearsWaitlistAndSendsEmail() throws Exception {
+
+        // ---- Reset Singleton ----
+        Field f0 = BorrowManager.class.getDeclaredField("instance");
+        f0.setAccessible(true);
+        f0.set(null, null);
+
+        BorrowManager bm = BorrowManager.init(borrowRepo, waitRepo);
+
+        // Add both users to UserManager
+        userRepo.users.add(user);
+        User u2 = new User("B", Role.USER, "p", "b@ps.com");
+        userRepo.users.add(u2);
+        UserManager.init(userRepo);
+
+        // ---- Borrow item first ----
+        bm.borrowItem(user, item);
+
+        // ---- Add u2 to waitlist ----
+        waitRepo.store.add(new WaitlistEntry(item.getId(), "b@ps.com", LocalDate.now()));
+
+        FakeNotifier capture = new FakeNotifier();
+
+        // ---- Mock EmailNotifier ----
+        try (MockedConstruction<EmailNotifier> mocked =
+                mockConstruction(EmailNotifier.class,
+                        (mock, ctx) -> doAnswer(inv -> {
+                            capture.notify(
+                                    inv.getArgument(0),
+                                    inv.getArgument(1),
+                                    inv.getArgument(2));
+                            return null;
+                        }).when(mock).notify(any(), anyString(), anyString())))
+        {
+            bm.returnItem(user, item);
+        }
+
+        // ---- Assertions ----
+        assertTrue(capture.notified, "Notifier should be called");
+        assertEquals("b@ps.com", capture.target.getEmail(), "Correct user must be notified");
+        assertEquals(0, waitRepo.store.size(), "Waitlist must be cleared");
+    }
+
+
+    // ---------- Utility tests ----------
+
     @Test
     void testCalculateTotalFines() {
         BorrowManager bm = BorrowManager.getInstance();
-        bm.borrowItem(user, book);
+        bm.borrowItem(user, item);
 
-        LocalDate overdueDate = LocalDate.now().plusDays(50);
-        BigDecimal fine = bm.calculateTotalFines(user, overdueDate);
+        BigDecimal v =
+                bm.calculateTotalFines(user, LocalDate.now().plusDays(80));
 
-        assertTrue(fine.compareTo(BigDecimal.ZERO) > 0);
+        assertTrue(v.compareTo(BigDecimal.ZERO) > 0);
     }
 
-    // Overdue items
+    @Test
+    void testCalculateTotalFinesWhenReturned() {
+
+        BorrowManager bm = BorrowManager.getInstance();
+        bm.borrowItem(user, item);
+
+        try (MockedConstruction<EmailNotifier> mock =
+                     Mockito.mockConstruction(EmailNotifier.class))
+        {
+            bm.returnItem(user, item);
+        }
+
+        BigDecimal v =
+                bm.calculateTotalFines(user, LocalDate.now().plusDays(80));
+
+        assertEquals(BigDecimal.ZERO, v);
+    }
+
     @Test
     void testGetOverdueItems() {
         BorrowManager bm = BorrowManager.getInstance();
-        bm.borrowItem(user, book);
+        bm.borrowItem(user, item);
 
-        List<BorrowRecord> list =
-                bm.getOverdueItems(LocalDate.now().plusDays(100));
+        var list = bm.getOverdueItems(LocalDate.now().plusDays(100));
 
         assertEquals(1, list.size());
     }
+
+    @Test
+    void testGetBorrowRecordsForUser() {
+        BorrowManager bm = BorrowManager.getInstance();
+        bm.borrowItem(user, item);
+
+        var list = bm.getBorrowRecordsForUser(user);
+
+        assertEquals(1, list.size());
+    }
+
+    @Test
+    void testApplyOverdueFinesOnEmptyList() {
+        BorrowManager bm = BorrowManager.getInstance();
+        assertDoesNotThrow(() -> bm.applyOverdueFines(LocalDate.now()));
+    }
+
+    @Test
+    void testGetInstanceFailsWhenNotInitialized() throws Exception {
+        var f = BorrowManager.class.getDeclaredField("instance");
+        f.setAccessible(true);
+        f.set(null, null);
+
+        assertThrows(IllegalStateException.class, BorrowManager::getInstance);
+    }
 }
-
-
-

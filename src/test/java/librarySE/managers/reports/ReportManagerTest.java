@@ -22,30 +22,64 @@ class ReportManagerTest {
         u = new User("A", Role.USER, "pass123", "a@ps.com");
         book = new Book("ISBN", "T", "A", BigDecimal.TEN);
 
-        r = new BorrowRecord(u, book, book.getMaterialType().createFineStrategy(),
-                LocalDate.now().minusDays(60));
+        r = new BorrowRecord(
+                u,
+                book,
+                book.getMaterialType().createFineStrategy(),
+                LocalDate.now().minusDays(60)
+        );
 
         manager = new ReportManager(List.of(r));
     }
 
+    // ================
+    // Constructor tests
+    // ================
+
     @Test
-    void finesServiceNotNull() {
+    void testConstructorRejectsNullList() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ReportManager(null));
+    }
+
+    @Test
+    void testConstructorCreatesAllServices() {
+        assertNotNull(manager.fines());
+        assertNotNull(manager.activity());
+        assertNotNull(manager.exporter());
+    }
+
+    // ===================
+    // Service getter tests
+    // ===================
+
+    @Test
+    void testFinesServiceNotNull() {
         assertNotNull(manager.fines());
     }
 
     @Test
-    void activityServiceNotNull() {
+    void testActivityServiceNotNull() {
         assertNotNull(manager.activity());
     }
 
     @Test
-    void exporterNotNull() {
+    void testExporterNotNull() {
         assertNotNull(manager.exporter());
     }
 
+    // ==========================
+    // exportFinesCsv() tests
+    // ==========================
+
     @Test
-    void exportCsv_NoException() {
+    void testExportCsv_NoException() {
         assertDoesNotThrow(() -> manager.exportFinesCsv(LocalDate.now()));
     }
-}
 
+    @Test
+    void testExportCsv_NullDateThrows() {
+        assertThrows(IllegalArgumentException.class,
+                () -> manager.exportFinesCsv(null));
+    }
+}
