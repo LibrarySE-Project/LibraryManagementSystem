@@ -4,9 +4,11 @@ import librarySE.core.*;
 import librarySE.repo.ItemRepository;
 import librarySE.search.SearchStrategy;
 import librarySE.managers.notifications.EmailNotifier;
+import librarySE.utils.LoggerUtils;
 
 import org.junit.jupiter.api.*;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -15,6 +17,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 
 class ItemManagerTest {
 
@@ -60,12 +64,12 @@ class ItemManagerTest {
         f.setAccessible(true);
         f.set(null, null);
 
-        // Reset UserManager Singleton
+        // Reset UserManager singleton
         var uf = UserManager.class.getDeclaredField("instance");
         uf.setAccessible(true);
         uf.set(null, null);
 
-        // Reset Admin Singleton
+        // Reset Admin singleton
         var af = Admin.class.getDeclaredField("instance");
         af.setAccessible(true);
         af.set(null, null);
@@ -167,7 +171,7 @@ class ItemManagerTest {
                 mockConstruction(EmailNotifier.class,
                         (mock, ctx) -> doAnswer(inv -> {
                             cap.notified = true;
-                            cap.u = inv.getArgument(0);   
+                            cap.u = inv.getArgument(0);
                             return null;
                         }).when(mock).notify(any(), anyString(), anyString()))) {
 
@@ -175,32 +179,41 @@ class ItemManagerTest {
         }
 
         assertEquals(1, repo.store.size());
-        assertTrue(cap.notified);                     
+        assertTrue(cap.notified);
         assertEquals("u@mail.com", cap.u.getEmail());
     }
 
-
+    /**
+     * Triggers the catch block in addItem:
+     * - UserManager is NOT initialized, so getInstance() throws IllegalStateException.
+     * - Exception is caught and LoggerUtils.log(...) is called.
+     */
     @Test
-    void testAddItemNotificationFailsButStillPasses() {
+    void testAddItemLogsErrorWhenNotificationFails() {
 
         ItemManager m = ItemManager.init(repo, search);
 
-        // Admin
+        // Create a valid admin
         Admin.initialize("Admin", "Strong1!", "admin@mail.com");
         Admin admin = Admin.getInstance();
 
         LibraryItem book = new Book("1","B","A", BigDecimal.ONE);
 
-        FakeUserRepo fakeUserRepo = new FakeUserRepo();
-        UserManager.init(fakeUserRepo);
-        fakeUserRepo.users.add(new User("U", Role.USER, "Strong1!", "u@mail.com"));
+        // IMPORTANT: we do NOT call UserManager.init(...)
+        // so UserManager.getInstance() will throw inside the try block.
 
-        try (MockedConstruction<EmailNotifier> mocked =
-                mockConstruction(EmailNotifier.class,
-                        (mock,ctx)-> doThrow(new RuntimeException("fail"))
-                                .when(mock).notify(any(), anyString(), anyString()))) {
+        try (MockedStatic<LoggerUtils> mockedLogger = mockStatic(LoggerUtils.class)) {
 
+            // Method must NOT throw even though notification logic fails
             assertDoesNotThrow(() -> m.addItem(book, admin));
+
+            // Verify that the catch block called LoggerUtils.log(...)
+            mockedLogger.verify(() ->
+                    LoggerUtils.log(
+                            eq("notification_errors.txt"),
+                            startsWith("Failed to notify users ->")
+                    )
+            );
         }
     }
 
@@ -240,7 +253,6 @@ class ItemManagerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> m.deleteItem(book, fakeAdmin));
     }
-
 
     @Test
     void testDeleteItemSuccess() {
@@ -282,7 +294,6 @@ class ItemManagerTest {
         assertEquals(1, result.size());
     }
 
-
     @Test
     void testSearchItemsNoMatch() {
         ItemManager m = ItemManager.init(repo, search);
@@ -309,6 +320,7 @@ class ItemManagerTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> list.add(new Book("2","X","Y", BigDecimal.ONE)));
     }
+
     @Test
     void testInitDoesNotReinitializeWhenInstanceExists() {
         ItemManager first = ItemManager.init(repo, search);
@@ -324,28 +336,28 @@ class ItemManagerTest {
         assertSame(search, getField(second, "searchStrategy"));
     }
 
-	private Object getField(ItemManager second, String string) {
-	   
-	        try {
-	            var f = ItemManager.class.getDeclaredField(string);
-	            ((Field) f).setAccessible(true);
-	            return f.get(second);
-	        } catch (Exception e) {
-	            throw new RuntimeException(e);
-	        }
-	    
-	}
-	@Test
-	void testSetSearchStrategyChangesStrategy() throws Exception {
-	    ItemManager m = ItemManager.init(repo, search);
+    private Object getField(ItemManager second, String string) {
+        try {
+            var f = ItemManager.class.getDeclaredField(string);
+            f.setAccessible(true);
+            return f.get(second);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-	    FakeSearch newStrategy = new FakeSearch();
-	    m.setSearchStrategy(newStrategy);
+    @Test
+    void testSetSearchStrategyChangesStrategy() throws Exception {
+        ItemManager m = ItemManager.init(repo, search);
 
-	    var f = ItemManager.class.getDeclaredField("searchStrategy");
-	    f.setAccessible(true);
-	    Object internal = f.get(m);
+        FakeSearch newStrategy = new FakeSearch();
+        m.setSearchStrategy(newStrategy);
 
-	    assertSame(newStrategy, internal);
-	}
+        var f = ItemManager.class.getDeclaredField("searchStrategy");
+        f.setAccessible(true);
+        Object internal = f.get(m);
+
+        assertSame(newStrategy, internal);
+    }
 }
+

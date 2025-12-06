@@ -2,26 +2,32 @@ package librarySE.managers;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class UserTest {
 
-    User user;
+    private User user;
 
     @BeforeEach
     void setup() {
         user = new User("Malak", Role.USER, "pass123", "m@ps.com");
     }
 
-    // constructor must set fields correctly
+    // constructor 
+
     @Test
-    void testConstructorStoresFields() {
+    void constructorStoresFields() {
         assertEquals("Malak", user.getUsername());
         assertEquals(Role.USER, user.getRole());
         assertEquals("m@ps.com", user.getEmail());
@@ -29,185 +35,171 @@ class UserTest {
         assertNotNull(user.getId());
     }
 
-    // constructor rejects null username
     @Test
-    void testConstructorRejectsNullUsername() {
+    void constructorRejectsNullUsername() {
         assertThrows(NullPointerException.class,
                 () -> new User(null, Role.USER, "pass123", "a@a.com"));
     }
 
-    // constructor rejects null password
     @Test
-    void testConstructorRejectsNullPassword() {
+    void constructorRejectsNullPassword() {
         assertThrows(NullPointerException.class,
                 () -> new User("X", Role.USER, null, "a@a.com"));
     }
 
-    // constructor rejects invalid email
     @Test
-    void testConstructorRejectsInvalidEmail() {
+    void constructorRejectsInvalidEmail() {
         assertThrows(IllegalArgumentException.class,
                 () -> new User("X", Role.USER, "pass123", "wrongEmail"));
     }
 
-    // ---------- checkPassword tests ----------
+    // checkPassword 
 
-    // checkPassword success
     @Test
-    void testCheckPasswordSuccess() {
+    void checkPasswordSuccess() {
         assertTrue(user.checkPassword("pass123"));
     }
 
-    // checkPassword fails wrong input
     @Test
-    void testCheckPasswordWrong() {
+    void checkPasswordWrong() {
         assertFalse(user.checkPassword("wrong"));
     }
 
-    // branch: entered == null -> false
     @Test
-    void testCheckPasswordNullEnteredReturnsFalse() {
+    void checkPasswordNullEntered() {
         assertFalse(user.checkPassword(null));
     }
 
-    // branch: passwordHash == null -> false
     @Test
-    void testCheckPasswordNullHashReturnsFalse() throws Exception {
+    void checkPasswordHashNull() throws Exception {
         User u = new User("X", Role.USER, "pass123", "a@a.com");
         Field f = User.class.getDeclaredField("passwordHash");
         f.setAccessible(true);
-        f.set(u, null);           // force hash to be null
+        f.set(u, null);
         assertFalse(u.checkPassword("pass123"));
     }
 
-    // ---------- changePassword tests ----------
+    // changePassword
 
-    // changePassword success
     @Test
-    void testChangePasswordSuccess() {
+    void changePasswordSuccess() {
         boolean ok = user.changePassword("pass123", "newpass1");
         assertTrue(ok);
         assertTrue(user.checkPassword("newpass1"));
     }
 
-    // changePassword fails if old password wrong
     @Test
-    void testChangePasswordWrongOldPassword() {
+    void changePasswordWrongOld() {
         boolean ok = user.changePassword("wrong", "newpass1");
         assertFalse(ok);
     }
 
-    // ---------- fine management ----------
+    // fines 
 
-    // addFine increases balance
     @Test
-    void testAddFine() {
+    void addFineIncreasesBalance() {
         user.addFine(BigDecimal.valueOf(20));
         assertEquals(BigDecimal.valueOf(20), user.getFineBalance());
     }
 
-    // addFine rejects negative
     @Test
-    void testAddFineRejectsNegative() {
+    void addFineRejectsNegative() {
         assertThrows(IllegalArgumentException.class,
                 () -> user.addFine(BigDecimal.valueOf(-5)));
     }
 
-    // payFine reduces balance
     @Test
-    void testPayFine() {
+    void payFineReducesBalance() {
         user.addFine(BigDecimal.valueOf(20));
         user.payFine(BigDecimal.valueOf(5));
         assertEquals(BigDecimal.valueOf(15), user.getFineBalance());
     }
 
-    // payFine rejects negative
     @Test
-    void testPayFineRejectsNegative() {
+    void payFineRejectsNegative() {
         assertThrows(IllegalArgumentException.class,
                 () -> user.payFine(BigDecimal.valueOf(-1)));
     }
 
-    // payFine rejects more than balance
     @Test
-    void testPayFineRejectsTooMuch() {
+    void payFineRejectsTooMuch() {
         user.addFine(BigDecimal.valueOf(10));
         assertThrows(IllegalArgumentException.class,
                 () -> user.payFine(BigDecimal.valueOf(20)));
     }
 
-    // hasOutstandingFine works
     @Test
-    void testHasOutstandingFine() {
+    void hasOutstandingFine() {
         assertFalse(user.hasOutstandingFine());
         user.addFine(BigDecimal.TEN);
         assertTrue(user.hasOutstandingFine());
     }
 
-    // ---------- setters ----------
+    // setters
 
-    // setUsername works
     @Test
-    void testSetUsername() {
+    void setUsernameWorks() {
         user.setUsername("New");
         assertEquals("New", user.getUsername());
     }
 
-    // setUsername rejects empty
     @Test
-    void testSetUsernameRejectsEmpty() {
+    void setUsernameRejectsEmpty() {
         assertThrows(IllegalArgumentException.class,
                 () -> user.setUsername(""));
     }
 
-    // setEmail works
     @Test
-    void testSetEmail() {
+    void setEmailWorks() {
         user.setEmail("test@najah.edu");
         assertEquals("test@najah.edu", user.getEmail());
     }
 
-    // setEmail rejects invalid
     @Test
-    void testSetEmailRejectsInvalid() {
+    void setEmailRejectsInvalid() {
         assertThrows(IllegalArgumentException.class,
                 () -> user.setEmail("wrongEmail"));
     }
 
-    // ---------- equals / hashCode / toString / default ctor ----------
+    // equals / hashCode / toString / default ctor 
 
-    // equals uses ID: same object -> true
     @Test
-    void testEqualsSameObjectTrue() {
+    void equalsSameObject() {
         assertTrue(user.equals(user));
     }
 
-    // equals uses ID: different users -> false
     @Test
-    void testEqualsDifferentUsersFalse() {
+    void equalsDifferentUsers() {
         User other = new User("Other", Role.USER, "pass123", "o@o.com");
         assertNotEquals(user, other);
     }
 
-    // hashCode based on id
     @Test
-    void testHashCodeUsesId() {
+    void equalsNull() {
+        assertFalse(user.equals(null));
+    }
+
+    @Test
+    void equalsDifferentType() {
+        assertFalse(user.equals("not a user"));
+    }
+
+    @Test
+    void hashCodeUsesId() {
         int expected = Objects.hash(user.getId());
         assertEquals(expected, user.hashCode());
     }
 
-    // toString contains username, role, email
     @Test
-    void testToStringContainsFields() {
+    void toStringContainsFields() {
         String s = user.toString();
         assertTrue(s.contains("Malak"));
         assertTrue(s.contains("USER"));
         assertTrue(s.contains("m@ps.com"));
     }
 
-    // default constructor initializes sensible defaults (covers default ctor + getId)
     @Test
-    void testDefaultConstructorInitializesDefaults() {
+    void defaultConstructorInitializesDefaults() {
         User u = new User();
         assertNotNull(u.getId());
         assertEquals("", u.getUsername());
@@ -215,93 +207,39 @@ class UserTest {
         assertEquals(Role.USER, u.getRole());
         assertEquals(BigDecimal.ZERO, u.getFineBalance());
     }
-	 // ------------------------------
-	 // Covers: default constructor
-	 // ------------------------------
-	 @Test
-	 void testDefaultConstructor() {
-	     User u = new User();
-	
-	     assertNotNull(u.getId());
-	     assertEquals("", u.getUsername());
-	     assertEquals("", u.getEmail());
-	     assertEquals(Role.USER, u.getRole());
-	     assertEquals(BigDecimal.ZERO, u.getFineBalance());
-	 }
 
-	 // ------------------------------
-	 // Covers: checkPassword branch where passwordHash == null
-	 // ------------------------------
-	 @Test
-	 void testCheckPasswordWhenPasswordHashNull() {
-	     User u = new User();
-	     // default constructor sets passwordHash = ""
-	     // we manually break the hash to null to cover branch
-	     try {
-	         var f = User.class.getDeclaredField("passwordHash");
-	         f.setAccessible(true);
-	         f.set(u, null);  // force passwordHash = null
-	     } catch (Exception e) {
-	         fail("Reflection failed");
-	     }
-	
-	     assertFalse(u.checkPassword("anything"));
-	 }
-	
-	 // ------------------------------
-	 // Covers: equals → comparing to null
-	 // ------------------------------
-	 @Test
-	 void testEqualsNull() {
-	     assertFalse(user.equals(null));
-	 }
-	
-	 // ------------------------------
-	 // Covers: equals → comparing to different object type
-	 // ------------------------------
-	 @Test
-	 void testEqualsDifferentType() {
-	     assertFalse(user.equals("not a user"));
-	 }
-	
-	 // ------------------------------
-	 // Covers: equals → comparing same object
-	 // ------------------------------
-	 @Test
-	 void testEqualsSameObject() {
-	     assertTrue(user.equals(user));
-	 }
-	
-	 // ------------------------------
-	 // Covers: isAdmin() fully (true + false)
-	 // ------------------------------
-	 @Test
-	 void testIsAdminBranches() {
-	     User admin = new User("A", Role.ADMIN, "pass123", "a@a.com");
-	     User normal = new User("B", Role.USER, "pass123", "b@b.com");
-	
-	     assertTrue(admin.isAdmin());
-	     assertFalse(normal.isAdmin());
-	 }
-	
-	 // ------------------------------
-	 // Covers: hashPassword exception branch indirectly (simulate NoSuchAlgorithmException)
-	 // ⚠️ ONLY IF your instructor wants full branch coverage, otherwise skip
-	 // ------------------------------
-	 @Test
-	 void testHashPasswordFailureBranch() throws Exception {
-	     // Use reflection to force MessageDigest.getInstance() to throw exception
-	     try {
-	         var method = User.class.getDeclaredMethod("hashPassword", String.class);
-	         method.setAccessible(true);
-	
-	         // Should work normally:
-	         String h1 = (String) method.invoke(null, "abc");
-	         assertNotNull(h1);
-	
-	     } catch (Exception e) {
-	         fail("Normal hashing should not fail");
-	     }
-	 }
+    @Test
+    void isAdminBranches() {
+        User admin = new User("A", Role.ADMIN, "pass123", "a@a.com");
+        User normal = new User("B", Role.USER, "pass123", "b@b.com");
 
+        assertTrue(admin.isAdmin());
+        assertFalse(normal.isAdmin());
+    }
+
+    // hashPassword catch branch 
+
+    @Test
+    void hashPassword_failureBranchWrappedInRuntimeException() throws Exception {
+        Method m = User.class.getDeclaredMethod("hashPassword", String.class);
+        m.setAccessible(true);
+
+        try (MockedStatic<MessageDigest> mdMock =
+                     Mockito.mockStatic(MessageDigest.class)) {
+
+            mdMock.when(() -> MessageDigest.getInstance("SHA-256"))
+                  .thenThrow(new NoSuchAlgorithmException("boom"));
+
+            InvocationTargetException ex =
+                    assertThrows(InvocationTargetException.class,
+                            () -> m.invoke(null, "abc"));
+
+            Throwable cause = ex.getCause();
+            assertTrue(cause instanceof RuntimeException);
+            assertEquals("Error hashing password", cause.getMessage());
+            assertTrue(cause.getCause() instanceof NoSuchAlgorithmException);
+        }
+    }
 }
+
+
