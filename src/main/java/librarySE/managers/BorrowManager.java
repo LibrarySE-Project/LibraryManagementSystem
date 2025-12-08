@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
  * with valid credentials in the <b>.env</b> file.</p>
  *
  * @author Malak
+ * 
  */
 public class BorrowManager {
 

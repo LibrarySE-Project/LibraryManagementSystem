@@ -28,9 +28,6 @@ import librarySE.utils.ValidationUtils;
  * }</pre>
  *
  * @author Malak
- * @see ValidationUtils
- * @see SearchStrategy
- * @see librarySE.core.LibraryItem
  */
 public class DefaultSearchStrategy implements SearchStrategy {
 

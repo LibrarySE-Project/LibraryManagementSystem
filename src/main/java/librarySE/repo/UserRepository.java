@@ -32,8 +32,6 @@ import java.util.List;
  * }</pre>
  *
  * @author Eman
- * @see librarySEv2.repo.FileUserRepository
- * @see librarySEv2.managers.User
  */
 public interface UserRepository {
 

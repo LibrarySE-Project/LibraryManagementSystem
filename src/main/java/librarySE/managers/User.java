@@ -32,9 +32,7 @@ import librarySE.utils.ValidationUtils;
  * }</pre>
  *
  * @author Eman
- * @version 2.1
- * @see Role
- * @see ValidationUtils
+ * 
  */
 public class User implements Serializable {
 

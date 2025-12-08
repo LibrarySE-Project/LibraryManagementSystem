@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
  * as of the given date.</p>
  *
  * @author Eman
+ * 
  */
 public class NotificationManager {
 

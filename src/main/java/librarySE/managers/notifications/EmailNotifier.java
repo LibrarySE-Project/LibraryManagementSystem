@@ -23,6 +23,7 @@ import librarySE.core.EmailService;
  * </pre>
  *
  * @author Eman
+ * 
  */
 public class EmailNotifier implements Notifier {
 

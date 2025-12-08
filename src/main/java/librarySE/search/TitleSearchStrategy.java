@@ -18,9 +18,6 @@ import librarySE.utils.ValidationUtils;
  * }</pre>
  * 
  * @author Eman
- * @see librarySE.core.LibraryItem#getTitle()
- * @see ValidationUtils
- * @see SearchStrategy
  */
 public class TitleSearchStrategy implements SearchStrategy {
 

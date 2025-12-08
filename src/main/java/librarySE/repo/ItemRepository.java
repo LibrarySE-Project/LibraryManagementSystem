@@ -31,8 +31,6 @@ import java.util.List;
  * }</pre>
  * 
  * @author Malak
- * @see librarySEv2.core.LibraryItem
- * @see librarySEv2.repo.FileItemRepository
  */
 public interface ItemRepository {
 

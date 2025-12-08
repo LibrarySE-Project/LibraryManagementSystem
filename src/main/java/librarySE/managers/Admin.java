@@ -38,8 +38,7 @@ package librarySE.managers;
  * }</pre>
  *
  * @author Eman
- * @see User
- * @see Role
+ * 
  */
 public class Admin extends User {
 

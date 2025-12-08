@@ -38,9 +38,7 @@ import java.math.BigDecimal;
  * }</pre>
  *
  * @author Malak
- * @see FineStrategy
- * @see BaseFineStrategy
- * @see Config
+ * 
  */
 public final class FineStrategyFactory {
 

@@ -11,7 +11,6 @@ import java.math.BigDecimal;
  * </p>
  * 
  * @author Eman
- * @see FineStrategy
  */
 public abstract class BaseFineStrategy implements FineStrategy {
 

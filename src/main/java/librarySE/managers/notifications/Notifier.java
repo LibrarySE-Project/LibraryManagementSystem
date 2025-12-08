@@ -19,6 +19,7 @@ import librarySE.managers.User;
  * }</pre>
  *
  * @author Malak
+ * 
  */
 public interface Notifier {
 

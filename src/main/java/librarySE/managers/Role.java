@@ -25,7 +25,6 @@ package librarySE.managers;
  * }</pre>
  *
  * @author Malak
- * @see librarySEv2.core.User
  */
 public enum Role {
 

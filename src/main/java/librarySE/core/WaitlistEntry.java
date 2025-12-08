@@ -37,8 +37,7 @@ import librarySE.utils.ValidationUtils;
  * }</pre>
  *
  * @author Eman
- * @see librarySEv2.managers.BorrowManager
- * @see librarySEv2.repo.WaitlistRepository
+ * 
  */
 public class WaitlistEntry implements Serializable {
 

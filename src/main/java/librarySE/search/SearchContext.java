@@ -26,10 +26,6 @@ import librarySE.core.LibraryItem;
  * }</pre>
  *
  * @author Malak
- * @see SearchStrategy
- * @see TitleSearchStrategy
- * @see KeywordSearchStrategy
- * @see DefaultSearchStrategy
  */
 public class SearchContext {
 
