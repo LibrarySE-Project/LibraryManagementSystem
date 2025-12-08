@@ -31,9 +31,7 @@ import librarySE.utils.ValidationUtils;
  * }</pre>
  *
  * @author Malak
- * @see Admin
- * @see LoggerUtils
- * @see ValidationUtils
+ * 
  */
 public class LoginManager {
 

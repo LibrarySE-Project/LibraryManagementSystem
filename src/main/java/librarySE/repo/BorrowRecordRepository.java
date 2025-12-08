@@ -34,8 +34,7 @@ import java.util.List;
  * }</pre>
  * 
  * @author Eman
- * @see librarySEv2.managers.BorrowRecord
- * @see librarySEv2.repo.FileBorrowRecordRepository
+ * 
  */
 public interface BorrowRecordRepository {
 

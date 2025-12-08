@@ -19,10 +19,7 @@ import librarySE.strategy.FineStrategyFactory;
  * </p>
  *
  * @author Malak
- * @see FineStrategy
- * @see FineStrategyFactory
- * @see BaseFineStrategy
- * @see BorrowRecord
+ * 
  */
 public class FineContext {
 

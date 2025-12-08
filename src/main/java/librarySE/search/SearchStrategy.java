@@ -45,10 +45,6 @@ import librarySE.core.LibraryItem;
  * }</pre>
  *
  * @author Eman
- * @see librarySEv2.core.LibraryItem
- * @see librarySEv2.search.TitleSearchStrategy
- * @see librarySEv2.search.AuthorSearchStrategy
- * @see librarySEv2.search.KeywordSearchStrategy
  */
 public interface SearchStrategy {
 

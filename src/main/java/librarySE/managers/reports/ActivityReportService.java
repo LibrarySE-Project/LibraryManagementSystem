@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
  * borrowing records concurrently without risking modification conflicts.</p>
  *
  * @author Eman
+ * 
  */
 public class ActivityReportService {
 

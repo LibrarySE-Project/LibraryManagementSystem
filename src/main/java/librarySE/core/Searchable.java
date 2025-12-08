@@ -9,6 +9,7 @@ package librarySE.core;
  * </p>
  *
  * @author malak
+ * 
  */
 public interface Searchable {
 

@@ -29,8 +29,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * }</pre>
  * 
  * @author Malak
- * @see BorrowManager
- * @see UserRepository
+ * 
  */
 public class UserManager {
 

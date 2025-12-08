@@ -26,6 +26,7 @@ import java.util.Properties;
  * </p>
  *
  * @author Malak
+ * 
  */
 public final class Config {
 

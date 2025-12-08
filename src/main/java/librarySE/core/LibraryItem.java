@@ -24,9 +24,7 @@ import java.util.UUID;
  * </p>
  *
  * @author Eman
- * @see Borrowable
- * @see Searchable
- * @see MaterialType
+ * 
  */
 public interface LibraryItem extends Borrowable, Searchable {
 

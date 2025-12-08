@@ -31,9 +31,7 @@ import librarySE.utils.ValidationUtils;
  * </p>
  *
  * @author Eman
- * @see AbstractLibraryItem
- * @see MaterialType
- * @see ValidationUtils
+ * 
  */
 public class Book extends AbstractLibraryItem {
 

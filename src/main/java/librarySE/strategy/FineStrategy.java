@@ -22,6 +22,7 @@ import java.math.BigDecimal;
  * 
  * 
  * @author Eman
+ * 
  */
 public interface FineStrategy {
 
