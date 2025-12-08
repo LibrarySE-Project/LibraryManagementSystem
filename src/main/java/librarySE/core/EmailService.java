@@ -6,50 +6,34 @@ import java.util.Properties;
 
 /**
  * {@code EmailService} is responsible for sending email notifications through Gmail's SMTP server.
- * <p>
- * It automatically loads credentials (username and password) from the environment variables
- * using the {@code .env} file via {@code java-dotenv} library.
- * </p>
+ * It loads Gmail credentials from a local .env file using the java-dotenv library.
  *
  * <h3>Features:</h3>
  * <ul>
- *     <li>Automatically loads Gmail credentials securely from a .env file.</li>
- *     <li>Supports TLS encryption and SMTP authentication.</li>
- *     <li>Provides simple API to send plain-text messages.</li>
+ *     <li>Loads email credentials securely from a .env file</li>
+ *     <li>Uses TLS and authenticated SMTP connection</li>
+ *     <li>Sends plain-text messages</li>
  * </ul>
  *
- * <p><b>Example Usage:</b></p>
- * <pre>{@code
- * EmailService emailService = new EmailService();
- * emailService.sendEmail(
- *     "student@stu.najah.edu",
- *     "Book Due Reminder",
- *     "Dear user, your borrowed book is due soon."
- * );
- * }</pre>
- *
- * <p>
- * Make sure your <b>.env</b> file includes:
+ * <p><b>Required .env file:</b></p>
  * <pre>
  * EMAIL_USERNAME=your_email@gmail.com
  * EMAIL_PASSWORD=your_app_password
  * </pre>
- * </p>
  *
  * @author Eman
- * @version 1.0
+ * @version 1.1
  */
 public class EmailService {
 
-    /** Sender's Gmail address loaded from environment variables */
+    /** Sender Gmail username loaded from .env file */
     private final String username;
 
-    /** Sender's Gmail password or App Password loaded from environment variables */
+    /** Sender Gmail password (App Password) loaded from .env file */
     private final String password;
 
     /**
-     * Constructs an {@code EmailService} instance.
-     * <p>Automatically loads {@code EMAIL_USERNAME} and {@code EMAIL_PASSWORD} from a .env file.</p>
+     * Constructs an {@code EmailService} and loads Gmail credentials from .env.
      */
     public EmailService() {
         io.github.cdimascio.dotenv.Dotenv dotenv = io.github.cdimascio.dotenv.Dotenv.load();
@@ -58,14 +42,34 @@ public class EmailService {
     }
 
     /**
-     * Sends an email to the specified recipient with the given subject and message body.
+     * Creates the SMTP authenticator used during email sending.
      *
-     * @param to      recipient's email address
-     * @param subject email subject line
-     * @param body    content of the email
-     * @throws RuntimeException if the email fails to send
+     * <p>
+     * This method is extracted for testability: unit tests can directly
+     * call and verify the returned password authentication object.
+     * </p>
+     *
+     * @return an {@link Authenticator} instance that supplies the Gmail credentials
+     */
+    protected Authenticator createAuthenticator() {
+        return new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(username, password);
+            }
+        };
+    }
+
+    /**
+     * Sends an email to the specified recipient using Gmail SMTP.
+     *
+     * @param to      recipient address
+     * @param subject email subject
+     * @param body    email body text
+     * @throws RuntimeException if email fails to send
      */
     public void sendEmail(String to, String subject, String body) {
+
         // SMTP configuration
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
@@ -73,23 +77,17 @@ public class EmailService {
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.port", "587");
 
-        // Create session with authentication
-        Session session = Session.getInstance(props, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(username, password);
-            }
-        });
+        // Create session
+        Session session = Session.getInstance(props, createAuthenticator());
 
         try {
-           
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(username));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(subject);
             message.setText(body);
 
-            
+            // Send email via SMTP
             Transport.send(message);
 
             java.util.logging.Logger.getLogger(EmailService.class.getName())
@@ -98,7 +96,7 @@ public class EmailService {
         } catch (MessagingException e) {
             java.util.logging.Logger.getLogger(EmailService.class.getName())
                     .severe("Failed to send email to: " + to + " → " + e.getMessage());
-            throw new RuntimeException("❌ Failed to send email", e);
+            throw new RuntimeException("Failed to send email", e);
         }
     }
 }

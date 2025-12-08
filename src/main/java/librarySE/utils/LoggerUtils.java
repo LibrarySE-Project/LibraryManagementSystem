@@ -25,7 +25,7 @@ public final class LoggerUtils {
     /** Directory where log files are stored. */
     private static final Path LOG_DIR = Paths.get("library_data", "logs");
 
-    // --- Static initializer ensures log directory exists ---
+    // Static initializer ensures log directory exists 
     static {
         try {
             if (!Files.exists(LOG_DIR)) Files.createDirectories(LOG_DIR);

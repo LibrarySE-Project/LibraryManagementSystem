@@ -34,9 +34,7 @@ class ActivityReportServiceTest {
         service = new ActivityReportService(List.of(r1, r2, r3));
     }
 
-    // ===========================
     // Constructor Tests
-    // ===========================
     @Test
     void testConstructorRejectsNullList() {
         assertThrows(IllegalArgumentException.class, () -> new ActivityReportService(null));
