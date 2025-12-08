@@ -5,7 +5,6 @@ import librarySE.managers.notifications.EmailNotifier;
 import librarySE.repo.ItemRepository;
 import librarySE.search.SearchStrategy;
 import librarySE.utils.LoggerUtils;
-import librarySE.utils.ValidationUtils;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -65,7 +64,7 @@ public class ItemManager {
      * Must be called once at system startup, typically in the main initialization phase.
      * </p>
      *
-     * @param repo the {@link ItemRepository} instance used to persist data
+     * @param repo  the {@link ItemRepository} instance used to persist data
      * @param search the {@link SearchStrategy} instance used for search logic
      * @return the initialized singleton instance
      */
@@ -105,12 +104,14 @@ public class ItemManager {
      *
      * @param item  the {@link LibraryItem} to add; must not be {@code null}
      * @param admin the {@link Admin} performing the operation; must not be {@code null}
-     * @throws IllegalArgumentException if {@code item} or {@code admin} is {@code null},
-     *                                  or if the admin does not have sufficient privileges
+     *
+     * @throws NullPointerException if {@code item} or {@code admin} is {@code null}
+     * @throws IllegalArgumentException if the admin does not have sufficient privileges
      */
     public void addItem(LibraryItem item, Admin admin) {
-    	ValidationUtils.requireNonEmpty(admin, "admin");
-    	ValidationUtils.requireNonEmpty(item, "item");
+        Objects.requireNonNull(admin, "admin must not be null");
+        Objects.requireNonNull(item, "item must not be null");
+
         if (!admin.isAdmin())
             throw new IllegalArgumentException("Only admins can add items.");
 
@@ -129,13 +130,12 @@ public class ItemManager {
                         item.getClass().getSimpleName(),
                         item.getTitle()
                 );
-				emailNotifier.notify(user, subject, message);
+                emailNotifier.notify(user, subject, message);
             }
         } catch (Exception e) {
             LoggerUtils.log("notification_errors.txt",
                     "Failed to notify users → " + e.getMessage());
         }
-
     }
 
     /**
@@ -146,12 +146,14 @@ public class ItemManager {
      *
      * @param item  the {@link LibraryItem} to remove; must not be {@code null}
      * @param admin the {@link Admin} performing the operation; must not be {@code null}
-     * @throws IllegalArgumentException if {@code item} or {@code admin} is {@code null},
-     *                                  or if the admin does not have sufficient privileges
+     *
+     * @throws NullPointerException if {@code item} or {@code admin} is {@code null}
+     * @throws IllegalArgumentException if the admin does not have sufficient privileges
      */
     public void deleteItem(LibraryItem item, Admin admin) {
-    	ValidationUtils.requireNonEmpty(admin, "admin");
-    	ValidationUtils.requireNonEmpty(item, "item");
+        Objects.requireNonNull(admin, "admin must not be null");
+        Objects.requireNonNull(item, "item must not be null");
+
         if (!admin.isAdmin())
             throw new IllegalArgumentException("Only admins can delete items.");
 
@@ -191,5 +193,4 @@ public class ItemManager {
     public List<LibraryItem> getAllItems() {
         return List.copyOf(items);
     }
-
 }
