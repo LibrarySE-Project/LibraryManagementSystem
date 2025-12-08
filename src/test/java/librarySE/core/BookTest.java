@@ -28,10 +28,7 @@ class BookTest {
         book = null;
     }
 
-    // ----------------------------------------------------------
     // Constructor Tests
-    // ----------------------------------------------------------
-
     @Test
     void testConstructor_ValidData() {
         assertEquals("123-ABC", book.getIsbn());
@@ -85,10 +82,7 @@ class BookTest {
         assertEquals("An Author", b.getAuthor());
     }
 
-    // ----------------------------------------------------------
     // Setter Tests
-    // ----------------------------------------------------------
-
     @Test
     void testSetTitle_Valid() {
         book.setTitle("New");
@@ -127,10 +121,7 @@ class BookTest {
         assertThrows(IllegalArgumentException.class, () -> book.setAuthor(null));
     }
 
-    // ----------------------------------------------------------
     // Keyword Matching Tests
-    // ----------------------------------------------------------
-
     @Test
     void testMatchesKeyword_Title() {
         assertTrue(book.matchesKeyword("My"));
@@ -168,10 +159,7 @@ class BookTest {
         assertThrows(IllegalArgumentException.class, () -> book.matchesKeyword("   "));
     }
 
-    // ----------------------------------------------------------
     // Borrow / Return Tests
-    // ----------------------------------------------------------
-
     @Test
     void testBorrow_Success() {
         assertTrue(book.borrow());
@@ -210,10 +198,7 @@ class BookTest {
         assertEquals(MaterialType.BOOK, book.getMaterialType());
     }
 
-    // ----------------------------------------------------------
     // equals() and hashCode()
-    // ----------------------------------------------------------
-
     @Test
     void testEquals_SameISBN_True() {
         Book b2 = new Book("123-ABC", "X", "Y", BigDecimal.ONE);
@@ -242,10 +227,7 @@ class BookTest {
         assertFalse(book.equals("Hello"));
     }
 
-    // ----------------------------------------------------------
     // toString() Tests
-    // ----------------------------------------------------------
-
     @Test
     void testToString_NotNull() {
         assertNotNull(book.toString());

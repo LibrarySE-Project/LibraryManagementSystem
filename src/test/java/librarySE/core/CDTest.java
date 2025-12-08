@@ -24,9 +24,7 @@ class CDTest {
         cd = null;
     }
 
-    // ----------------------------------------------------------
     //  Constructor Tests
-    // ----------------------------------------------------------
     @Test
     void testConstructor_ValidData() {
         assertEquals("Song Collection", cd.getTitle());
@@ -60,9 +58,7 @@ class CDTest {
                 () -> new CD("Album", "  ", BigDecimal.TEN));
     }
 
-    // ----------------------------------------------------------
     //  Setter Tests
-    // ----------------------------------------------------------
     @Test
     void testSetTitle_Valid() {
         cd.setTitle("New Album");
@@ -89,9 +85,7 @@ class CDTest {
         assertThrows(IllegalArgumentException.class, () -> cd.setArtist(null));
     }
 
-    // ----------------------------------------------------------
     //  Keyword Matching
-    // ----------------------------------------------------------
     @Test
     void testMatchesKeyword_TitleMatch() {
         assertTrue(cd.matchesKeyword("Song"));
@@ -117,9 +111,7 @@ class CDTest {
         assertThrows(IllegalArgumentException.class, () -> cd.matchesKeyword(""));
     }
 
-    // ----------------------------------------------------------
     //  Borrow / Return (Inherited)
-    // ----------------------------------------------------------
     @Test
     void testBorrow_Success() {
         assertTrue(cd.borrow());
@@ -149,9 +141,7 @@ class CDTest {
     }
 
 
-	 // ----------------------------------------------------------
 	//  equals / hashCode
-	// ----------------------------------------------------------
 	@Test
 	void testEquals_SameData_False() {
 	    CD c2 = new CD("Song Collection", "Famous Singer", BigDecimal.valueOf(40));
@@ -181,9 +171,7 @@ class CDTest {
 	}
 	
 
-    // ----------------------------------------------------------
     //  toString()
-    // ----------------------------------------------------------
     @Test
     void testToString_Available() {
         String output = cd.toString();
