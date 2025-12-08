@@ -158,8 +158,6 @@ public final class Config {
         }
     }
 
-
-
 	/**
 	 * @return the configFile
 	 */

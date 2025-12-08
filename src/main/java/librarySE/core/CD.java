@@ -35,27 +35,33 @@ import librarySE.utils.ValidationUtils;
  */
 public class CD extends AbstractLibraryItem {
 
-    /** Serialization identifier for version consistency. */
     private static final long serialVersionUID = 1L;
 
-    /** The title of the CD. */
+    /**
+     * The title of this CD.
+     */
     private String title;
 
-    /** The artist or performer of the CD. */
+    /**
+     * The artist or performer of this CD.
+     */
     private String artist;
 
     /**
-     * Initializes a {@code CD} instance with validated metadata (title and artist).
-     * <p>
-     * This constructor is used internally by other constructors to ensure
-     * consistent validation and initialization of core fields.
-     * The default price is initialized to {@code 0.00}.
-     * </p>
+     * The total number of physical copies owned by the library.
+     */
+    private int totalCopies;
+
+    /**
+     * The number of currently available copies (not borrowed).
+     */
+    private int availableCopies;
+
+    /**
+     * Creates a CD with validated title and artist fields.
      *
-     * @param title  the CD title (non-null and non-empty)
-     * @param artist the CD artist (non-null and non-empty)
-     * @throws IllegalArgumentException if any parameter is invalid
-     * @implNote This constructor is private and should not be called directly.
+     * @param title  CD title, non-empty
+     * @param artist CD artist, non-empty
      */
     private CD(String title, String artist) {
         ValidationUtils.requireNonEmpty(title, "Title");
@@ -65,44 +71,72 @@ public class CD extends AbstractLibraryItem {
     }
 
     /**
-     * Constructs a new {@code CD} with validated metadata and a defined or automatically loaded price.
-     * <p>
-     * Implements the <b>Smart Price Logic</b>:
-     * <ul>
-     *   <li>If a positive {@code price} is provided → it will be used directly.</li>
-     *   <li>If {@code price} is {@code null} or zero → loads the default price from
-     *       {@link Config} key {@code "price.cd.default"}.</li>
-     *   <li>If no configuration value exists → defaults to {@code 0.00}.</li>
-     * </ul>
-     * </p>
+     * Creates a CD with one default total copy.
      *
-     * <p><b>Example:</b></p>
-     * <pre>{@code
-     * CD cd1 = new CD("Thriller", "Michael Jackson", BigDecimal.valueOf(39.99));
-     * CD cd2 = new CD("Thriller", "Michael Jackson", BigDecimal.ZERO);
-     * }</pre>
-     *
-     * @param title  the CD title (non-null and non-empty)
-     * @param artist the CD artist (non-null and non-empty)
-     * @param price  the CD price; if {@code null} or zero, loads default from Config
-     * @throws IllegalArgumentException if any field is invalid
+     * @param title  CD title
+     * @param artist CD artist
+     * @param price  CD price, or default configuration if null/zero
      */
     public CD(String title, String artist, BigDecimal price) {
         this(title, artist);
+        initCopies(1);
+        initPrice(price);
+    }
+
+    /**
+     * Creates a CD with specified total copies.
+     *
+     * @param title       CD title
+     * @param artist      CD artist
+     * @param price       CD price
+     * @param totalCopies total number of physical copies
+     */
+    public CD(String title, String artist, BigDecimal price, int totalCopies) {
+        this(title, artist);
+        initCopies(totalCopies);
+        initPrice(price);
+    }
+
+    /**
+     * Initializes the CD price using smart price logic.
+     *
+     * @param price user-specified price or default configuration
+     */
+    private void initPrice(BigDecimal price) {
         if (price != null && price.compareTo(BigDecimal.ZERO) > 0) {
-            setPrice(price); 
+            setPrice(price);
         } else {
-            double defaultPrice =  Config.getDouble("price.cd.default", 0.0);
+            double defaultPrice = Config.getDouble("price.cd.default", 0.0);
             setPrice(BigDecimal.valueOf(defaultPrice));
         }
     }
-    /** {@inheritDoc} */
+
+    /**
+     * Initializes totalCopies and availableCopies.
+     *
+     * @param copies initial total copies (>0)
+     */
+    private void initCopies(int copies) {
+        if (copies <= 0) throw new IllegalArgumentException("Total copies must be > 0");
+        this.totalCopies = copies;
+        this.availableCopies = copies;
+    }
+
+    /**
+     * Returns the CD title.
+     *
+     * @return CD title
+     */
     @Override
     public String getTitle() {
         return title;
     }
 
-    /** Returns the artist or performer of this CD. */
+    /**
+     * Returns the CD artist.
+     *
+     * @return artist name
+     */
     public String getArtist() {
         return artist;
     }
@@ -110,8 +144,7 @@ public class CD extends AbstractLibraryItem {
     /**
      * Updates the CD title after validation.
      *
-     * @param t the new title (non-null and non-empty)
-     * @throws IllegalArgumentException if invalid
+     * @param t new title
      */
     public void setTitle(String t) {
         ValidationUtils.requireNonEmpty(t, "Title");
@@ -119,10 +152,9 @@ public class CD extends AbstractLibraryItem {
     }
 
     /**
-     * Updates the artist name after validation.
+     * Updates the CD artist after validation.
      *
-     * @param a the new artist (non-null and non-empty)
-     * @throws IllegalArgumentException if invalid
+     * @param a new artist
      */
     public void setArtist(String a) {
         ValidationUtils.requireNonEmpty(a, "Artist");
@@ -130,9 +162,42 @@ public class CD extends AbstractLibraryItem {
     }
 
     /**
-     * Returns the material type of this item.
+     * Returns the total number of physical copies.
      *
-     * @return {@link MaterialType#CD}
+     * @return total copies
+     */
+    public synchronized int getTotalCopies() {
+        return totalCopies;
+    }
+
+    /**
+     * Returns number of available copies.
+     *
+     * @return available copies
+     */
+    public synchronized int getAvailableCopies() {
+        return availableCopies;
+    }
+
+    /**
+     * Changes the total number of physical copies and adjusts the available
+     * count accordingly.
+     *
+     * @param newTotal new total copies (>0)
+     */
+    public synchronized void setTotalCopies(int newTotal) {
+        if (newTotal <= 0) throw new IllegalArgumentException("Total copies must be > 0");
+        int delta = newTotal - this.totalCopies;
+        this.totalCopies = newTotal;
+        this.availableCopies += delta;
+        if (availableCopies > totalCopies) availableCopies = totalCopies;
+        if (availableCopies < 0) availableCopies = 0;
+    }
+
+    /**
+     * Returns CD as a material type.
+     *
+     * @return MaterialType.CD
      */
     @Override
     public MaterialType getMaterialType() {
@@ -140,36 +205,95 @@ public class CD extends AbstractLibraryItem {
     }
 
     /**
-     * Checks whether the given keyword matches either the CD title or artist.
-     * <p>
-     * The match is case-insensitive and used for searching the library catalog.
-     * </p>
+     * Checks if keyword matches title or artist.
      *
-     * @param keyword the keyword to search for (non-null)
-     * @return {@code true} if the keyword appears in title or artist
-     * @throws IllegalArgumentException if keyword is {@code null}
+     * @param keyword search keyword (non-null)
+     * @return true if keyword found
      */
     @Override
     public boolean matchesKeyword(String keyword) {
-    	ValidationUtils.requireNonEmpty(keyword, "Keyword");
+        ValidationUtils.requireNonEmpty(keyword, "Keyword");
         String k = keyword.toLowerCase();
         return (title + " " + artist).toLowerCase().contains(k);
     }
 
+    /**
+     * Determines whether the item has at least one available copy to borrow.
+     * <p>
+     * This method is called internally by the abstract borrowing mechanism in
+     * {@link AbstractLibraryItem}. Classes that maintain multiple copies (such as
+     * books, journals, or CDs) override this method to define the item’s real
+     * availability status based on the remaining copies.
+     * </p>
+     *
+     * @return {@code true} if there is at least one available copy, otherwise {@code false}
+     */
+    @Override
+    protected boolean isAvailableInternal() {
+        return availableCopies > 0;
+    }
 
     /**
-     * Returns a human-readable description of this CD, including title,
-     * artist, price, and availability state.
+     * Attempts to borrow a single copy of the item.
+     * <p>
+     * If no copies are currently available, this method throws an exception and the
+     * borrowing operation fails. Otherwise, the internal available copy count is
+     * decreased by one.
+     * </p>
      *
-     * @return formatted string representation of this CD
+     * @return {@code true} if the borrowing operation succeeds
+     * @throws IllegalStateException if there are no available copies to borrow
+     */
+    @Override
+    protected boolean doBorrow() {
+        if (availableCopies <= 0) {
+            throw new IllegalStateException(
+                    "No available copies of \"" + title + "\" to borrow."
+            );
+        }
+        availableCopies--;
+        return true;
+    }
+
+    /**
+     * Returns one borrowed copy back to the library.
+     * <p>
+     * If all copies are already present in the library (no outstanding loans),
+     * the method throws an exception and the return operation is rejected.
+     * Otherwise, the internal available copy count is increased by one.
+     * </p>
+     *
+     * @return {@code true} if the return operation succeeds
+     * @throws IllegalStateException if all copies are already returned
+     */
+    @Override
+    protected boolean doReturn() {
+        if (availableCopies >= totalCopies) {
+            throw new IllegalStateException(
+                    "All copies of \"" + title + "\" are already in the library."
+            );
+        }
+        availableCopies++;
+        return true;
+    }
+
+
+
+    /**
+     * Returns a formatted string representation of this CD showing
+     * metadata and availability.
+     *
+     * @return formatted description
      */
     @Override
     public String toString() {
-        return "[CD] %s by %s (Price:%s) — %s".formatted(
+        return "[CD] %s by %s (Price:%s, Available:%d/%d) — %s".formatted(
                 title,
                 artist,
                 getPrice().toPlainString(),
-                isAvailable() ? "Available" : "Borrowed"
+                getAvailableCopies(),
+                getTotalCopies(),
+                isAvailable() ? "Available" : "Fully borrowed"
         );
     }
 }

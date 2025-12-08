@@ -47,9 +47,7 @@ public final class FileUtils {
     /** Private constructor to prevent instantiation. */
     private FileUtils() {}
 
-    // ------------------------------------------------------------------------
     // Core JSON Read/Write with Backup
-    // ------------------------------------------------------------------------
 
     /**
      * Writes the given object to a JSON file. If the file already exists,
@@ -62,11 +60,11 @@ public final class FileUtils {
      */
     public static <T> void writeJson(Path file, T obj) {
         try {
-            // 1️⃣ Ensure backup folder exists
+            // Ensure backup folder exists
             Path backupDir = DATA_DIR.resolve("backups");
             if (!Files.exists(backupDir)) Files.createDirectories(backupDir);
 
-            // 2️⃣ If old file exists → create a backup copy
+            // If old file exists → create a backup copy
             if (Files.exists(file)) {
                 String timestamp = LocalDateTime.now().toString().replace(":", "-");
                 String backupName = file.getFileName().toString()
@@ -75,7 +73,7 @@ public final class FileUtils {
                 Files.copy(file, backupFile, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            // 3️⃣ Write the new data to file (overwrite)
+            // Write the new data to file (overwrite)
             try (Writer writer = Files.newBufferedWriter(file)) {
                 GSON.toJson(obj, writer);
             }

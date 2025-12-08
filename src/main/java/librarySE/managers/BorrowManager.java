@@ -167,14 +167,14 @@ public class BorrowManager {
                     .findUserByEmail(entry.getUserEmail());
             target.ifPresent(value ->
                     notifier.notify(value, "The item \"" + item.getTitle() + "\" is now available!",
-                            "📚 Good news! The item \"" + item.getTitle() + "\" you requested is now available for borrowing."));
+                            "Good news! The item \"" + item.getTitle() + "\" you requested is now available for borrowing."));
         }
 
         waitlist.removeIf(w -> w.getItemId().equals(item.getId()));
         waitlistRepo.saveAll(waitlist);
 
         borrowRepo.saveAll(borrowRecords);
-        System.out.println("✅ Item returned successfully: " + item.getTitle());
+        System.out.println(" Item returned successfully: " + item.getTitle());
     }
 
 

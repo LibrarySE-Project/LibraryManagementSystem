@@ -37,22 +37,16 @@ import librarySE.utils.ValidationUtils;
  */
 public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
 
-
-    /** Serialization identifier for version consistency. */
     private static final long serialVersionUID = 1L;
 
     /** Unique system-generated identifier for this item. */
     private final UUID id = UUID.randomUUID();
 
     /** Lock ensuring thread safety during borrow/return operations. */
-    private final ReentrantLock lock = new ReentrantLock();
-
-    /** Indicates whether the item is currently available for borrowing. */
-    private boolean available = true;
+    protected final ReentrantLock lock = new ReentrantLock();
 
     /** The current price of this item (default = 0). */
     private BigDecimal price = BigDecimal.ZERO;
-
 
     /**
      * Returns the unique identifier of this library item.
@@ -64,67 +58,48 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
         return id;
     }
 
- 
-
     /**
-     * Checks if the item is available for borrowing.
-     * <p>
-     * This method is thread-safe and ensures consistent results
-     * even if multiple users access the same item concurrently.
-     * </p>
+     * Template method: thread-safe availability check.
      *
-     * @return {@code true} if the item is available, {@code false} if currently borrowed
+     * @return {@code true} if the item is available, {@code false} otherwise
      */
     @Override
     public boolean isAvailable() {
         lock.lock();
         try {
-            return available;
+            return isAvailableInternal();
         } finally {
             lock.unlock();
         }
     }
 
     /**
-     * Attempts to borrow the item.
-     * <p>
-     * If the item is available, it will be marked as borrowed and
-     * become unavailable for other users. This method is synchronized
-     * using {@link ReentrantLock} for thread safety.
-     * </p>
+     * Template method: thread-safe borrow operation.
      *
-     * @return {@code true} if the item was successfully borrowed;
-     *         {@code false} if it was already borrowed by another user
+     * @return {@code true} if borrowing succeeds
+     * @throws IllegalStateException if the item (or copies) are not available
      */
     @Override
     public boolean borrow() {
         lock.lock();
         try {
-            if (!available) return false;
-            available = false;
-            return true;
+            return doBorrow();
         } finally {
             lock.unlock();
         }
     }
 
     /**
-     * Returns the item to the library and makes it available again.
-     * <p>
-     * Thread-safe operation that updates the availability flag only
-     * if the item was previously borrowed.
-     * </p>
+     * Template method: thread-safe return operation.
      *
-     * @return {@code true} if successfully returned;
-     *         {@code false} if the item was not borrowed
+     * @return {@code true} if returning succeeds
+     * @throws IllegalStateException if the item cannot be returned
      */
     @Override
-    public boolean returnItem() {
+    public final boolean returnItem() {
         lock.lock();
         try {
-            if (available) return false;
-            available = true;
-            return true;
+            return doReturn();
         } finally {
             lock.unlock();
         }
@@ -142,20 +117,34 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
 
     /**
      * Updates the price of this item.
-     * <p>
-     * Ensures that the new price value is valid and non-negative.
-     * Used by administrators or system operations to assign item prices.
-     * </p>
      *
      * @param price the new price to assign (must be non-negative and non-null)
      * @throws IllegalArgumentException if the price is negative
-     * @throws NullPointerException if {@code price} is {@code null}
+     * @throws NullPointerException     if {@code price} is {@code null}
      */
     @Override
     public void setPrice(BigDecimal price) {
-    	ValidationUtils.requireNonEmpty(price, "price");
-        if (price.compareTo(BigDecimal.ZERO) < 0)
+        ValidationUtils.requireNonEmpty(price, "price");
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Price cannot be negative.");
+        }
         this.price = price;
     }
+
+    /* ---------- Hook methods for subclasses ---------- */
+
+    /**
+     * Implemented by subclasses to check if at least one copy is available.
+     */
+    protected abstract boolean isAvailableInternal();
+
+    /**
+     * Implemented by subclasses to perform the actual borrow logic on copies.
+     */
+    protected abstract boolean doBorrow();
+
+    /**
+     * Implemented by subclasses to perform the actual return logic on copies.
+     */
+    protected abstract boolean doReturn();
 }
