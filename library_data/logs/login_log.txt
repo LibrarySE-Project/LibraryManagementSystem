@@ -1,0 +1,20 @@
+[2025-12-01T23:29:23.411252600] [LoginManager.login] FAIL login attempt for admin=nope
+[2025-12-01T23:29:23.417661300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-01T23:29:23.419697700] [LoginManager.login] FAIL login attempt for admin=admin
+[2025-12-01T23:29:23.422781800] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-01T23:29:23.423800700] [LoginManager.logout] Admin logged out: admin
+[2025-12-05T16:04:36.965152700] [LoginManager.login] FAIL login attempt for admin=nope
+[2025-12-05T16:04:36.971666100] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-05T16:04:36.975667200] [LoginManager.login] FAIL login attempt for admin=admin
+[2025-12-05T16:04:36.979194300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-05T16:04:36.980199500] [LoginManager.logout] Admin logged out: admin
+[2025-12-05T16:13:24.038110900] [LoginManager.login] FAIL login attempt for admin=nope
+[2025-12-05T16:13:24.043789700] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-05T16:13:24.045929400] [LoginManager.login] FAIL login attempt for admin=admin
+[2025-12-05T16:13:24.049120200] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-05T16:13:24.050626800] [LoginManager.logout] Admin logged out: admin
+[2025-12-05T16:18:22.088658900] [LoginManager.login] FAIL login attempt for admin=nope
+[2025-12-05T16:18:22.104000600] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-05T16:18:22.108706] [LoginManager.login] FAIL login attempt for admin=admin
+[2025-12-05T16:18:22.114317900] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-05T16:18:22.114317900] [LoginManager.logout] Admin logged out: admin

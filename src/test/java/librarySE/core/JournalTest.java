@@ -2,6 +2,7 @@ package librarySE.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -10,10 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import librarySE.utils.Config;
 
-/**
- * Full unit tests for {@link Journal}.
- * Covers all branches and all negative cases.
- */
+
 class JournalTest {
 
     private Journal journal;
@@ -37,6 +35,30 @@ class JournalTest {
         assertEquals("Dr. Smith", journal.getEditor());
         assertEquals("Vol. 10", journal.getIssueNumber());
         assertEquals(BigDecimal.valueOf(30), journal.getPrice());
+        assertEquals(1, journal.getTotalCopies());
+        assertEquals(1, journal.getAvailableCopies());
+    }
+
+    @Test
+    void testConstructor_WithTotalCopies_Valid() {
+        Journal j = new Journal("AI Research", "Editor", "Vol. 5",
+                BigDecimal.TEN, 4);
+        assertEquals("AI Research", j.getTitle());
+        assertEquals("Editor", j.getEditor());
+        assertEquals("Vol. 5", j.getIssueNumber());
+        assertEquals(BigDecimal.TEN, j.getPrice());
+        assertEquals(4, j.getTotalCopies());
+        assertEquals(4, j.getAvailableCopies());
+    }
+
+    @Test
+    void testConstructor_WithTotalCopies_Invalid_Throws() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("Title", "Editor", "Issue",
+                        BigDecimal.TEN, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("Title", "Editor", "Issue",
+                        BigDecimal.TEN, -3));
     }
 
     @Test
@@ -57,18 +79,30 @@ class JournalTest {
     void testConstructor_InvalidTitle_Throws() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Journal("", "Editor", "Issue", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("   ", "Editor", "Issue", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal(null, "Editor", "Issue", BigDecimal.TEN));
     }
 
     @Test
     void testConstructor_InvalidEditor_Throws() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Journal("Title", "  ", "Issue", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("Title", "", "Issue", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("Title", null, "Issue", BigDecimal.TEN));
     }
 
     @Test
     void testConstructor_InvalidIssue_Throws() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Journal("Title", "Editor", "", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("Title", "Editor", "   ", BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Journal("Title", "Editor", null, BigDecimal.TEN));
     }
 
     // ----------------------------------------------------------
@@ -114,6 +148,36 @@ class JournalTest {
     }
 
     // ----------------------------------------------------------
+    // Copy Management / setTotalCopies branches
+    // ----------------------------------------------------------
+    @Test
+    void testInitialCopies_DefaultSingleCopy() {
+        assertEquals(1, journal.getTotalCopies());
+        assertEquals(1, journal.getAvailableCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_ValidIncreaseAndDecrease_ClampsToZero() {
+        journal.setTotalCopies(3);
+        assertEquals(3, journal.getTotalCopies());
+        assertEquals(3, journal.getAvailableCopies());
+
+        journal.borrow();
+        journal.borrow();
+        assertEquals(1, journal.getAvailableCopies());
+
+        journal.setTotalCopies(1); 
+        assertEquals(1, journal.getTotalCopies());
+        assertEquals(0, journal.getAvailableCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_InvalidNewTotal_Throws() {
+        assertThrows(IllegalArgumentException.class, () -> journal.setTotalCopies(0));
+        assertThrows(IllegalArgumentException.class, () -> journal.setTotalCopies(-4));
+    }
+
+    // ----------------------------------------------------------
     // Keyword Matching
     // ----------------------------------------------------------
     @Test
@@ -142,23 +206,25 @@ class JournalTest {
     }
 
     @Test
-    void testMatchesKeyword_Empty_Throws() {
+    void testMatchesKeyword_EmptyOrSpaces_Throws() {
         assertThrows(IllegalArgumentException.class, () -> journal.matchesKeyword(""));
+        assertThrows(IllegalArgumentException.class, () -> journal.matchesKeyword("   "));
     }
 
     // ----------------------------------------------------------
-    // Borrow / Return Tests
+    // Borrow / Return Tests (with exceptions)
     // ----------------------------------------------------------
     @Test
     void testBorrow_Success() {
         assertTrue(journal.borrow());
         assertFalse(journal.isAvailable());
+        assertEquals(0, journal.getAvailableCopies());
     }
 
     @Test
-    void testBorrow_AlreadyBorrowed_Fails() {
+    void testBorrow_AlreadyBorrowed_Throws() {
         journal.borrow();
-        assertFalse(journal.borrow());
+        assertThrows(IllegalStateException.class, () -> journal.borrow());
     }
 
     @Test
@@ -166,11 +232,12 @@ class JournalTest {
         journal.borrow();
         assertTrue(journal.returnItem());
         assertTrue(journal.isAvailable());
+        assertEquals(1, journal.getAvailableCopies());
     }
 
     @Test
-    void testReturn_NotBorrowed_Fails() {
-        assertFalse(journal.returnItem());
+    void testReturn_NotBorrowed_Throws() {
+        assertThrows(IllegalStateException.class, () -> journal.returnItem());
     }
 
     // ----------------------------------------------------------
@@ -182,7 +249,7 @@ class JournalTest {
     }
 
     // ----------------------------------------------------------
-    // equals / hashCode (No override → always false except same reference)
+    // equals / hashCode (no override)
     // ----------------------------------------------------------
     @Test
     void testEquals_SameData_False() {
@@ -213,7 +280,7 @@ class JournalTest {
     }
 
     // ----------------------------------------------------------
-    // toString Tests (Cover both branches)
+    // toString Tests (Cover both states)
     // ----------------------------------------------------------
     @Test
     void testToString_Available() {
@@ -221,12 +288,46 @@ class JournalTest {
         assertTrue(output.contains("JOURNAL"));
         assertTrue(output.contains("Available"));
         assertTrue(output.contains(journal.getTitle()));
+        assertTrue(output.contains(journal.getIssueNumber()));
+        assertTrue(output.contains(journal.getEditor()));
     }
 
     @Test
-    void testToString_Borrowed() {
+    void testToString_FullyBorrowed() {
         journal.borrow();
         String output = journal.toString();
-        assertTrue(output.contains("Borrowed"));
+        assertTrue(output.contains("Fully borrowed"));
+        assertTrue(output.contains(journal.getTitle()));
     }
+    @Test
+    void testSetTotalCopies_ClampsWhenAvailableGreaterThanTotal() throws Exception {
+        Field totalField = Journal.class.getDeclaredField("totalCopies");
+        Field availableField = Journal.class.getDeclaredField("availableCopies");
+        totalField.setAccessible(true);
+        availableField.setAccessible(true);
+
+        totalField.setInt(journal, 3);
+        availableField.setInt(journal, 10); // availableCopies > totalCopies
+        journal.setTotalCopies(3);
+
+        assertEquals(3, journal.getTotalCopies());
+        assertEquals(3, journal.getAvailableCopies()); 
+    }
+
+    @Test
+    void testSetTotalCopies_ClampsNegativeAvailableToZero() throws Exception {
+        Field totalField = Journal.class.getDeclaredField("totalCopies");
+        Field availableField = Journal.class.getDeclaredField("availableCopies");
+        totalField.setAccessible(true);
+        availableField.setAccessible(true);
+
+        totalField.setInt(journal, 5);
+        availableField.setInt(journal, -2); // availableCopies < 0
+
+        journal.setTotalCopies(5);
+
+        assertEquals(5, journal.getTotalCopies());
+        assertEquals(0, journal.getAvailableCopies()); 
+    }
+
 }

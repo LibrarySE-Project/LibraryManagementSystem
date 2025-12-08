@@ -17,8 +17,21 @@ import org.junit.jupiter.api.Test;
  */
 class AbstractLibraryItemTest {
 
-    // Dummy subclass to test the abstract class
+    /**
+     * Dummy subclass to test the abstract behavior of {@link AbstractLibraryItem}.
+     *
+     * <p>
+     * This implementation simulates a single-copy item:
+     * initially available, one successful borrow, and one successful return.
+     * Any invalid operation (borrowing when already borrowed, or returning when
+     * not borrowed) throws {@link IllegalStateException}, matching the contract
+     * of {@link AbstractLibraryItem#borrow()} and {@link AbstractLibraryItem#returnItem()}.
+     * </p>
+     */
     static class DummyItem extends AbstractLibraryItem {
+
+        private boolean available = true;
+
         @Override
         public String getTitle() {
             return "DummyTitle";
@@ -32,6 +45,29 @@ class AbstractLibraryItemTest {
         @Override
         public boolean matchesKeyword(String keyword) {
             return false;
+        }
+
+        @Override
+        protected boolean isAvailableInternal() {
+            return available;
+        }
+
+        @Override
+        protected boolean doBorrow() {
+            if (!available) {
+                throw new IllegalStateException("Item already borrowed");
+            }
+            available = false;
+            return true;
+        }
+
+        @Override
+        protected boolean doReturn() {
+            if (available) {
+                throw new IllegalStateException("Item is not currently borrowed");
+            }
+            available = true;
+            return true;
         }
     }
 
@@ -71,7 +107,7 @@ class AbstractLibraryItemTest {
     @Test
     void testBorrow_FailsWhenAlreadyBorrowed() {
         item.borrow();
-        assertFalse(item.borrow());
+        assertThrows(IllegalStateException.class, () -> item.borrow());
     }
 
     @Test
@@ -83,7 +119,7 @@ class AbstractLibraryItemTest {
 
     @Test
     void testReturn_FailsWhenNotBorrowed() {
-        assertFalse(item.returnItem());
+        assertThrows(IllegalStateException.class, () -> item.returnItem());
     }
 
     // ------------------------------------------------------------
@@ -137,10 +173,15 @@ class AbstractLibraryItemTest {
 
         for (int i = 0; i < threads; i++) {
             new Thread(() -> {
-                if (item.borrow()) {
-                    successCount.incrementAndGet();
+                try {
+                    if (item.borrow()) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (IllegalStateException ignored) {
+                    // expected for losing threads
+                } finally {
+                    latch.countDown();
                 }
-                latch.countDown();
             }).start();
         }
 
@@ -153,7 +194,7 @@ class AbstractLibraryItemTest {
 
     @Test
     void testReturn_ThreadSafety() throws InterruptedException {
-        item.borrow();
+        item.borrow(); // make it borrowed first
 
         int threads = 50;
         CountDownLatch latch = new CountDownLatch(threads);
@@ -161,10 +202,15 @@ class AbstractLibraryItemTest {
 
         for (int i = 0; i < threads; i++) {
             new Thread(() -> {
-                if (item.returnItem()) {
-                    successCount.incrementAndGet();
+                try {
+                    if (item.returnItem()) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (IllegalStateException ignored) {
+                    // expected for losing threads
+                } finally {
+                    latch.countDown();
                 }
-                latch.countDown();
             }).start();
         }
 
@@ -205,4 +251,3 @@ class AbstractLibraryItemTest {
         }
     }
 }
-

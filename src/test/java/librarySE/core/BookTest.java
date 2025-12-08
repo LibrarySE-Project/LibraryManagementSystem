@@ -2,6 +2,7 @@ package librarySE.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +39,9 @@ class BookTest {
         assertEquals("My Book", book.getTitle());
         assertEquals("Author Name", book.getAuthor());
         assertEquals(BigDecimal.valueOf(50), book.getPrice());
+        // single-copy constructor → 1 copy
+        assertEquals(1, book.getTotalCopies());
+        assertEquals(1, book.getAvailableCopies());
     }
 
     @Test
@@ -85,6 +89,13 @@ class BookTest {
         assertEquals("An Author", b.getAuthor());
     }
 
+    @Test
+    void testConstructor_WithTotalCopies() {
+        Book b = new Book("999", "Title", "Author", BigDecimal.TEN, 5);
+        assertEquals(5, b.getTotalCopies());
+        assertEquals(5, b.getAvailableCopies());
+    }
+
     // ----------------------------------------------------------
     // Setter Tests
     // ----------------------------------------------------------
@@ -125,6 +136,29 @@ class BookTest {
         assertThrows(IllegalArgumentException.class, () -> book.setAuthor(""));
         assertThrows(IllegalArgumentException.class, () -> book.setAuthor("   "));
         assertThrows(IllegalArgumentException.class, () -> book.setAuthor(null));
+    }
+
+    // ----------------------------------------------------------
+    // Copy Management Tests
+    // ----------------------------------------------------------
+
+    @Test
+    void testGetTotalAndAvailableCopies_InitialSingleCopy() {
+        assertEquals(1, book.getTotalCopies());
+        assertEquals(1, book.getAvailableCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_IncreasesTotalAndAvailable() {
+        book.setTotalCopies(3);
+        assertEquals(3, book.getTotalCopies());
+        assertEquals(3, book.getAvailableCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_Invalid_Throws() {
+        assertThrows(IllegalArgumentException.class, () -> book.setTotalCopies(0));
+        assertThrows(IllegalArgumentException.class, () -> book.setTotalCopies(-5));
     }
 
     // ----------------------------------------------------------
@@ -169,19 +203,20 @@ class BookTest {
     }
 
     // ----------------------------------------------------------
-    // Borrow / Return Tests
+    // Borrow / Return Tests (adapted to throw exceptions)
     // ----------------------------------------------------------
 
     @Test
     void testBorrow_Success() {
         assertTrue(book.borrow());
         assertFalse(book.isAvailable());
+        assertEquals(0, book.getAvailableCopies());
     }
 
     @Test
-    void testBorrow_WhenAlreadyBorrowed_Fails() {
+    void testBorrow_WhenAlreadyBorrowed_Throws() {
         book.borrow();
-        assertFalse(book.borrow());
+        assertThrows(IllegalStateException.class, () -> book.borrow());
     }
 
     @Test
@@ -189,11 +224,12 @@ class BookTest {
         book.borrow();
         assertTrue(book.returnItem());
         assertTrue(book.isAvailable());
+        assertEquals(1, book.getAvailableCopies());
     }
 
     @Test
-    void testReturn_WhenNotBorrowed_Fails() {
-        assertFalse(book.returnItem());
+    void testReturn_WhenNotBorrowed_Throws() {
+        assertThrows(IllegalStateException.class, () -> book.returnItem());
     }
 
     @Test
@@ -205,6 +241,7 @@ class BookTest {
             assertTrue(book.isAvailable());
         }
     }
+
     @Test
     void testGetMaterialType_ReturnsBook() {
         assertEquals(MaterialType.BOOK, book.getMaterialType());
@@ -260,6 +297,7 @@ class BookTest {
         assertTrue(s.contains(book.getIsbn()));
         assertTrue(s.contains(book.getPrice().toPlainString()));
     }
+
     @Test
     void testToString_AvailableState() {
         String text = book.toString();
@@ -267,12 +305,113 @@ class BookTest {
         assertTrue(text.contains("[BOOK]"));
         assertTrue(text.contains(book.getIsbn()));
     }
-    @Test
-    void testToString_BorrowedState() {
-        book.borrow(); 
-        String text = book.toString();
-        assertTrue(text.contains("Borrowed"));
-    }
+
+ @Test
+ void testToString_FullyBorrowedState() {
+	        book.borrow();
+	        String text = book.toString();
+	        assertTrue(text.contains("Fully borrowed"));
+  }
+	 // ----------------------------------------------------------
+	 // initCopies() and setTotalCopies() Coverage Tests
+	 // ----------------------------------------------------------
+	
+	 @Test
+	 void testInitCopies_Invalid_Throws() {
+	     assertThrows(IllegalArgumentException.class,
+	             () -> new Book("ID", "T", "A", BigDecimal.ONE, 0));
+	     assertThrows(IllegalArgumentException.class,
+	             () -> new Book("ID", "T", "A", BigDecimal.ONE, -5));
+	 }
+	
+	 @Test
+	 void testInitCopies_Valid() {
+	     Book b = new Book("ID", "T", "A", BigDecimal.ONE, 3);
+	     assertEquals(3, b.getTotalCopies());
+	     assertEquals(3, b.getAvailableCopies());
+	 }
+	
+	 @Test
+	 void testSetTotalCopies_Increase() {
+	     // initial 1 copy
+	     assertEquals(1, book.getTotalCopies());
+	     assertEquals(1, book.getAvailableCopies());
+	
+	     book.setTotalCopies(5);
+	
+	     assertEquals(5, book.getTotalCopies());
+	     assertEquals(5, book.getAvailableCopies());  // availableCopies += delta
+	 }
+	
+	 @Test
+	 void testSetTotalCopies_Decrease_AvailableClampedToTotal() {
+	     // make availableCopies less or greater than new total
+	     Book b = new Book("ID", "T", "A", BigDecimal.ONE, 5); // 5 copies available
+	
+	     // decrease to 2
+	     b.setTotalCopies(2);
+	
+	     assertEquals(2, b.getTotalCopies());
+	     assertEquals(2, b.getAvailableCopies());  // clamped down
+	 }
+	
+	 @Test
+	 void testSetTotalCopies_AvailableGoesBelowZero_ClampedToZero() {
+	     Book b = new Book("ID", "T", "A", BigDecimal.ONE, 2);
+	
+	     // borrow both → available = 0
+	     b.borrow();
+	     b.borrow();
+	     assertEquals(0, b.getAvailableCopies());
+	
+	     // decrease totalCopies to 1
+	     b.setTotalCopies(1);
+	
+	     assertEquals(1, b.getTotalCopies());
+	     assertEquals(0, b.getAvailableCopies());  // stays zero because it was already 0
+	 }
+	
+	 @Test
+	 void testSetTotalCopies0_Invalid_Throws() {
+	     assertThrows(IllegalArgumentException.class, () -> book.setTotalCopies(0));
+	     assertThrows(IllegalArgumentException.class, () -> book.setTotalCopies(-3));
+	 }
+	 @Test
+	 void testSetTotalCopies_ClampAvailableGreaterThanTotal_Reflection() throws Exception {
+	     Book b = new Book("X","Y","Z", BigDecimal.TEN, 2);
+
+	     Field totalField = Book.class.getDeclaredField("totalCopies");
+	     Field availableField = Book.class.getDeclaredField("availableCopies");
+	     totalField.setAccessible(true);
+	     availableField.setAccessible(true);
+
+	     totalField.setInt(b, 2);
+	     availableField.setInt(b, 10);
+
+	     b.setTotalCopies(2);
+
+	     assertEquals(2, b.getTotalCopies());
+	     assertEquals(2, b.getAvailableCopies());
+	 }
+
+	 @Test
+	 void testSetTotalCopies_ClampAvailableLessThanZero_Reflection() throws Exception {
+	     Book b = new Book("X","Y","Z", BigDecimal.TEN, 2);
+
+	     Field totalField = Book.class.getDeclaredField("totalCopies");
+	     Field availableField = Book.class.getDeclaredField("availableCopies");
+	     totalField.setAccessible(true);
+	     availableField.setAccessible(true);
+
+	     totalField.setInt(b, 2);
+	     availableField.setInt(b, -4);
+
+	     b.setTotalCopies(2);
+
+	     assertEquals(2, b.getTotalCopies());
+	     assertEquals(0, b.getAvailableCopies());
+	 }
+
 
 
 }

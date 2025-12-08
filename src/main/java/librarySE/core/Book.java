@@ -7,30 +7,28 @@ import librarySE.utils.Config;
 import librarySE.utils.ValidationUtils;
 
 /**
- * Represents a {@link LibraryItem} of type <b>Book</b> in the library system.
- * <p>
- * Each book has a unique ISBN identifier, a title, an author, and an optional price.
- * It inherits core functionality such as borrowing, returning, and price management
- * from {@link AbstractLibraryItem}, ensuring consistent thread-safe behavior across all
- * library materials.
- * </p>
+ * Represents a Book in the library system, supporting multiple copies and
+ * thread-safe borrowing/returning operations inherited from
+ * {@link AbstractLibraryItem}.
  *
- * <h3>Key Features:</h3>
+ * <p>Each book is uniquely identified by its ISBN and contains title, author,
+ * and price metadata. The price may be explicitly provided or loaded from
+ * configuration defaults. The class supports multiple physical copies of the
+ * same book, ensuring accurate tracking of total and available copies.</p>
+ *
+ * <h3>Copy Management</h3>
  * <ul>
- *   <li>Encapsulates essential metadata for books (ISBN, title, author, price).</li>
- *   <li>Supports keyword-based search across title, author, and ISBN fields.</li>
- *   <li>Ensures validation for non-empty fields and safe operations.</li>
- *   <li>Uses {@link ValidationUtils} for consistent data validation.</li>
+ *     <li>Total copies represent the physical quantity owned by the library.</li>
+ *     <li>Available copies represent the currently borrowable count.</li>
+ *     <li>Borrowing decreases available copies; returning increases them.</li>
+ *     <li>A book is available if at least one copy is currently unborrowed.</li>
  * </ul>
  *
- * <h3>Example Usage:</h3>
- * <pre>{@code
- * Book book = new Book("978-0134685991", "Effective Java", "Joshua Bloch", BigDecimal.valueOf(59.99));
- * System.out.println(book.getTitle());     // "Effective Java"
- * System.out.println(book.isAvailable());  // true
- * book.borrow();
- * System.out.println(book.isAvailable());  // false
- * }</pre>
+ * <h3>Concurrency</h3>
+ * <p>
+ * All public state-changing operations are synchronized to ensure safe
+ * concurrent access consistent with the system architecture.
+ * </p>
  *
  * @author Eman
  * @see AbstractLibraryItem
@@ -39,32 +37,40 @@ import librarySE.utils.ValidationUtils;
  */
 public class Book extends AbstractLibraryItem {
 
-    /** Serialization identifier for version consistency. */
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	/** Unique International Standard Book Number (ISBN). */
+    /**
+     * Unique International Standard Book Number identifying this book.
+     */
     private final String isbn;
 
-    /** The title of the book. */
+    /**
+     * Human-readable title of this book.
+     */
     private String title;
 
-    /** The author of the book. */
+    /**
+     * Name of the author of this book.
+     */
     private String author;
 
     /**
-     * Initializes a {@code Book} instance with validated metadata (ISBN, title, and author).
-     * <p>
-     * This constructor is used internally by other constructors to ensure
-     * consistent validation and initialization of core fields.
-     * The default price is initialized to {@code 0.00} and can later be set
-     * through higher-level constructors.
-     * </p>
+     * Total number of physical copies of this book owned by the library.
+     */
+    private int totalCopies;
+
+    /**
+     * Number of copies currently available for borrowing.
+     */
+    private int availableCopies;
+
+    /**
+     * Creates a Book with validated ISBN, title, and author.
      *
-     * @param isbn   the unique ISBN of the book (non-null and non-empty)
-     * @param title  the title of the book (non-null and non-empty)
-     * @param author the author of the book (non-null and non-empty)
-     * @throws IllegalArgumentException if any argument is invalid
-     * @implNote This constructor is private and should not be called directly.
+     * @param isbn   non-empty ISBN string
+     * @param title  non-empty book title
+     * @param author non-empty author name
+     * @throws IllegalArgumentException if any parameter is null or empty
      */
     private Book(String isbn, String title, String author) {
         ValidationUtils.requireNonEmpty(isbn, "ISBN");
@@ -76,31 +82,43 @@ public class Book extends AbstractLibraryItem {
     }
 
     /**
-     * Constructs a new {@code Book} with validated metadata and a defined or automatically loaded price.
-     * <p>
-     * Implements the <b>Smart Price Logic</b>:
-     * <ul>
-     *   <li>If a positive {@code price} is provided → it will be used directly.</li>
-     *   <li>If {@code price} is {@code null} or zero → the constructor automatically loads
-     *       the default price from {@link Config} using key {@code "price.book.default"}.</li>
-     *   <li>If no configuration value is found → the price defaults to {@code 0.00}.</li>
-     * </ul>
-     * </p>
+     * Creates a Book with a single copy and smart price initialization.
      *
-     * <p><b>Example:</b></p>
-     * <pre>{@code
-     * Book b1 = new Book("9780134685991", "Effective Java", "Joshua Bloch", BigDecimal.valueOf(79.99));
-     * Book b2 = new Book("9780134685991", "Effective Java", "Joshua Bloch", BigDecimal.ZERO);
-     * }</pre>
-     *
-     * @param isbn   the unique ISBN of the book (non-null and non-empty)
-     * @param title  the title of the book (non-null and non-empty)
-     * @param author the author of the book (non-null and non-empty)
-     * @param price  the price of the book; if {@code null} or zero, loads default from Config
-     * @throws IllegalArgumentException if any string argument is invalid
+     * @param isbn   book ISBN
+     * @param title  book title
+     * @param author book author
+     * @param price  explicit price, or configuration/default if null/zero
      */
     public Book(String isbn, String title, String author, BigDecimal price) {
         this(isbn, title, author);
+        initCopies(1);
+        initPrice(price);
+    }
+
+    /**
+     * Creates a Book with a specified number of total copies and smart price initialization.
+     *
+     * @param isbn        book ISBN
+     * @param title       book title
+     * @param author      book author
+     * @param price       explicit price, or configuration/default if null/zero
+     * @param totalCopies total physical copies (> 0)
+     * @throws IllegalArgumentException if totalCopies is not positive
+     */
+    public Book(String isbn, String title, String author, BigDecimal price, int totalCopies) {
+        this(isbn, title, author);
+        initCopies(totalCopies);
+        initPrice(price);
+    }
+
+    /**
+     * Initializes the price using smart price logic:
+     * uses the provided positive price, or loads a default from configuration,
+     * or falls back to zero.
+     *
+     * @param price optional explicit price
+     */
+    private void initPrice(BigDecimal price) {
         if (price != null && price.compareTo(BigDecimal.ZERO) > 0) {
             setPrice(price);
         } else {
@@ -109,27 +127,51 @@ public class Book extends AbstractLibraryItem {
         }
     }
 
-    /** Returns the unique ISBN of this book. */
+    /**
+     * Initializes total and available copies to the same positive value.
+     *
+     * @param copies initial total copies (> 0)
+     * @throws IllegalArgumentException if copies is not positive
+     */
+    private void initCopies(int copies) {
+        if (copies <= 0) throw new IllegalArgumentException("Total copies must be > 0");
+        this.totalCopies = copies;
+        this.availableCopies = copies;
+    }
+
+    /**
+     * Returns the ISBN of this book.
+     *
+     * @return ISBN string
+     */
     public String getIsbn() {
         return isbn;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * Returns the title of this book.
+     *
+     * @return book title
+     */
     @Override
     public String getTitle() {
         return title;
     }
 
-    /** Returns the author of this book. */
+    /**
+     * Returns the author of this book.
+     *
+     * @return author name
+     */
     public String getAuthor() {
         return author;
     }
 
     /**
-     * Updates the book's title after validation.
+     * Updates the book title after validation.
      *
-     * @param t the new title (non-null and non-empty)
-     * @throws IllegalArgumentException if title is invalid
+     * @param t new title string
+     * @throws IllegalArgumentException if the title is null or empty
      */
     public void setTitle(String t) {
         ValidationUtils.requireNonEmpty(t, "Title");
@@ -137,10 +179,10 @@ public class Book extends AbstractLibraryItem {
     }
 
     /**
-     * Updates the book's author after validation.
+     * Updates the book author after validation.
      *
-     * @param a the new author (non-null and non-empty)
-     * @throws IllegalArgumentException if author is invalid
+     * @param a new author name
+     * @throws IllegalArgumentException if the author is null or empty
      */
     public void setAuthor(String a) {
         ValidationUtils.requireNonEmpty(a, "Author");
@@ -148,7 +190,41 @@ public class Book extends AbstractLibraryItem {
     }
 
     /**
-     * Returns the material type of this item.
+     * Returns the total number of physical copies of this book.
+     *
+     * @return total copies
+     */
+    public synchronized int getTotalCopies() {
+        return totalCopies;
+    }
+
+    /**
+     * Returns the number of currently available copies of this book.
+     *
+     * @return available copies
+     */
+    public synchronized int getAvailableCopies() {
+        return availableCopies;
+    }
+
+    /**
+     * Changes the total number of physical copies and adjusts the available
+     * copies accordingly, ensuring the available count stays within [0, total].
+     *
+     * @param newTotal new total copies (> 0)
+     * @throws IllegalArgumentException if newTotal is not positive
+     */
+    public synchronized void setTotalCopies(int newTotal) {
+        if (newTotal <= 0) throw new IllegalArgumentException("Total copies must be > 0");
+        int delta = newTotal - this.totalCopies;
+        this.totalCopies = newTotal;
+        this.availableCopies += delta;
+        if (this.availableCopies > this.totalCopies) this.availableCopies = this.totalCopies;
+        if (this.availableCopies < 0) this.availableCopies = 0;
+    }
+
+    /**
+     * Returns the material type for this item.
      *
      * @return {@link MaterialType#BOOK}
      */
@@ -158,27 +234,68 @@ public class Book extends AbstractLibraryItem {
     }
 
     /**
-     * Checks if the given keyword matches any of the book's metadata fields.
-     * <p>
-     * The search is case-insensitive and includes title, author, and ISBN.
-     * </p>
+     * Checks whether the given keyword matches title, author, or ISBN
+     * in a case-insensitive manner.
      *
-     * @param keyword the search term (non-null)
-     * @return {@code true} if the keyword matches any field, otherwise {@code false}
-     * @throws IllegalArgumentException if keyword is {@code null}
+     * @param keyword non-null search keyword
+     * @return true if any field contains the keyword
+     * @throws IllegalArgumentException if keyword is null or empty
      */
     @Override
     public boolean matchesKeyword(String keyword) {
-    	ValidationUtils.requireNonEmpty(keyword, "Keyword");
+        ValidationUtils.requireNonEmpty(keyword, "Keyword");
         String k = keyword.toLowerCase();
         return (title + " " + author + " " + isbn).toLowerCase().contains(k);
     }
 
     /**
-     * Compares two books for equality based on their ISBN.
+     * Determines whether at least one copy of this book is available to borrow.
+     */
+    @Override
+    protected boolean isAvailableInternal() {
+        return availableCopies > 0;
+    }
+
+    /**
+     * Borrows one copy of this book by decrementing the available count.
      *
-     * @param o the object to compare with
-     * @return {@code true} if both books have the same ISBN
+     * @return {@code true} if the copy was successfully borrowed
+     * @throws IllegalStateException if no copies are currently available
+     */
+    @Override
+    protected boolean doBorrow() {
+        if (availableCopies <= 0) {
+            throw new IllegalStateException(
+                    "No available copies of \"" + title + "\" to borrow."
+            );
+        }
+        availableCopies--;
+        return true;
+    }
+
+    /**
+     * Returns one copy of this book to the library by incrementing
+     * the available count, up to the totalCopies limit.
+     *
+     * @return {@code true} if the copy was successfully returned
+     * @throws IllegalStateException if all copies are already in the library
+     */
+    @Override
+    protected boolean doReturn() {
+        if (availableCopies >= totalCopies) {
+            throw new IllegalStateException(
+                    "All copies of \"" + title + "\" are already in the library."
+            );
+        }
+        availableCopies++;
+        return true;
+    }
+
+    /**
+     * Compares this book with another object for equality based on ISBN.
+     *
+     * @param obj object to compare
+     * @return true if obj is a Book with the same ISBN
      */
     @Override
     public boolean equals(Object obj) {
@@ -187,25 +304,30 @@ public class Book extends AbstractLibraryItem {
         return Objects.equals(isbn, b.isbn);
     }
 
-
-    /** Returns a hash code based on the book's ISBN. */
+    /**
+     * Returns a hash code for this book derived from its ISBN.
+     *
+     * @return hash code value
+     */
     @Override
     public int hashCode() {
         return Objects.hash(isbn);
     }
 
     /**
-     * Returns a human-readable string representation of the book,
-     * including its title, author, ISBN, price, and availability status.
+     * Returns a formatted string representation of this book including
+     * title, author, ISBN, price, copy counts, and availability.
      *
-     * @return a formatted description of this book
+     * @return human-readable description string
      */
     @Override
     public String toString() {
-        return "[BOOK] %s by %s (ISBN:%s, Price:%s) — %s".formatted(
+        return "[BOOK] %s by %s (ISBN:%s, Price:%s, Available:%d/%d) — %s".formatted(
                 title, author, isbn,
                 getPrice().toPlainString(),
-                isAvailable() ? "Available" : "Borrowed"
+                getAvailableCopies(),
+                getTotalCopies(),
+                isAvailable() ? "Available" : "Fully borrowed"
         );
     }
 }
