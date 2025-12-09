@@ -53,8 +53,8 @@ public class ItemManager {
      */
     private ItemManager(ItemRepository repo, SearchStrategy searchStrategy) {
         this.items = new CopyOnWriteArrayList<>();
-        this.repo = repo;
-        this.searchStrategy = searchStrategy;
+        this.repo = Objects.requireNonNull(repo, "repo must not be null");
+        this.searchStrategy = Objects.requireNonNull(searchStrategy, "searchStrategy must not be null");
         this.items.addAll(repo.loadAll());
     }
 
@@ -92,7 +92,7 @@ public class ItemManager {
      * @param s the new {@link SearchStrategy} to be used
      */
     public void setSearchStrategy(SearchStrategy s) {
-        this.searchStrategy = s;
+        this.searchStrategy = Objects.requireNonNull(s, "searchStrategy must not be null");
     }
 
     /**
@@ -192,5 +192,16 @@ public class ItemManager {
      */
     public List<LibraryItem> getAllItems() {
         return List.copyOf(items);
+    }
+
+    /**
+     * Persists the current list of items to the underlying repository.
+     * <p>
+     * Call this after GUI edit operations (e.g. changing title, price, or copies)
+     * to flush all changes to the JSON file.
+     * </p>
+     */
+    public void saveAll() {
+        repo.saveAll(items);
     }
 }
