@@ -1,0 +1,11 @@
+[
+  {
+    "isbn": "12345",
+    "title": "java",
+    "author": "x",
+    "totalCopies": 20,
+    "availableCopies": 20,
+    "id": "f5d7465b-03fd-4fc5-9c51-91f96f1f3eae",
+    "price": 10
+  }
+]

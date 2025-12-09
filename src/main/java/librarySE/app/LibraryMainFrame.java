@@ -334,6 +334,64 @@ public class LibraryMainFrame extends JFrame {
         return panel;
     }
 
+    /**
+     * Finds an existing LibraryItem that matches the identifying fields
+     * for each material type:
+     *  - BOOK:    same ISBN
+     *  - CD:      same title + artist
+     *  - JOURNAL: same title + editor + issue
+     */
+    private LibraryItem findExistingItem(MaterialType type,
+                                         String title,
+                                         String person,
+                                         String isbn,
+                                         String issue) {
+
+        String normTitle = title == null ? "" : title.trim().toLowerCase();
+        String normPerson = person == null ? "" : person.trim().toLowerCase();
+        String normIsbn = isbn == null ? "" : isbn.trim();
+        String normIssue = issue == null ? "" : issue.trim().toLowerCase();
+
+        for (LibraryItem item : itemManager.getAllItems()) {
+
+            switch (type) {
+
+                case BOOK -> {
+                    if (item instanceof Book b) {
+                        if (!normIsbn.isEmpty()
+                                && normIsbn.equalsIgnoreCase(b.getIsbn())) {
+                            return item;
+                        }
+                    }
+                }
+
+                case CD -> {
+                    if (item instanceof CD cd) {
+                        String t = cd.getTitle().trim().toLowerCase();
+                        String a = cd.getArtist().trim().toLowerCase();
+                        if (normTitle.equals(t) && normPerson.equals(a)) {
+                            return item;
+                        }
+                    }
+                }
+
+                case JOURNAL -> {
+                    if (item instanceof Journal j) {
+                        String t = j.getTitle().trim().toLowerCase();
+                        String e = j.getEditor().trim().toLowerCase();
+                        String iss = j.getIssueNumber().trim().toLowerCase();
+                        if (normTitle.equals(t)
+                                && normPerson.equals(e)
+                                && normIssue.equals(iss)) {
+                            return item;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     private void handleAddItem() {
         if (!loginManager.isLoggedIn()) {
             JOptionPane.showMessageDialog(this,
@@ -350,35 +408,62 @@ public class LibraryMainFrame extends JFrame {
         String issue = issueNumberField.getText().trim();
         int copies = (Integer) copiesSpinner.getValue();
 
+        // ====== check for existing item (by key per type) ======
+        LibraryItem existing = findExistingItem(type, title, person, isbn, issue);
+        if (existing != null) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    "An item with the same key already exists.\n" +
+                            "Do you want to open it for editing instead?",
+                    "Duplicate item",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+            if (choice == JOptionPane.YES_OPTION) {
+                openEditItemDialog(existing);
+            }
+            return; // لا نضيف آيتم جديد
+        }
+        // ======================================================
+
         try {
             LibraryItem item;
+
             switch (type) {
+
                 case BOOK -> {
                     if (isbn.isEmpty())
                         throw new IllegalArgumentException("ISBN is required for books.");
+
                     if (priceText.isEmpty())
-                        item = LibraryItemFactory.create(type, isbn, title, person, copies);
+                        item = LibraryItemFactory.createBook(isbn, title, person, copies);
                     else
-                        item = LibraryItemFactory.create(type, isbn, title, person, priceText, copies);
+                        item = LibraryItemFactory.createBook(isbn, title, person, priceText, copies);
                 }
+
                 case CD -> {
                     if (priceText.isEmpty())
-                        item = LibraryItemFactory.create(type, title, person, copies);
+                        item = LibraryItemFactory.createCd(title, person, copies);
                     else
-                        item = LibraryItemFactory.create(type, title, person, priceText, copies);
+                        item = LibraryItemFactory.createCd(title, person, priceText, copies);
                 }
+
                 case JOURNAL -> {
                     if (issue.isEmpty())
                         throw new IllegalArgumentException("Issue number is required for journals.");
+
                     if (priceText.isEmpty())
-                        item = LibraryItemFactory.create(type, title, person, issue, copies);
+                        item = LibraryItemFactory.createJournal(title, person, issue, copies);
                     else
-                        item = LibraryItemFactory.create(type, title, person, issue, priceText, copies);
+                        item = LibraryItemFactory.createJournal(title, person, issue, priceText, copies);
                 }
+
                 default -> throw new IllegalStateException("Unexpected value: " + type);
             }
 
             itemManager.addItem(item, admin);
+            itemManager.saveAll(); // حفظ في الملف
+
             JOptionPane.showMessageDialog(this,
                     "Item added successfully: " + item.getTitle());
             loadAllItemsToSearchTable();
@@ -638,7 +723,7 @@ public class LibraryMainFrame extends JFrame {
 
         borrowButton = new JButton("Borrow Selected");
 
-        // (اختياري) دبل-كلك هنا كمان يفتح شاشة تعديل
+        // double-click: open edit dialog
         allItemsTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -1030,8 +1115,6 @@ public class LibraryMainFrame extends JFrame {
                     j.setTitle(newTitle);
                     j.setTotalCopies(newCopies);
                     j.setPrice(newPrice);
-                } else {
-
                 }
 
                 itemManager.saveAll();

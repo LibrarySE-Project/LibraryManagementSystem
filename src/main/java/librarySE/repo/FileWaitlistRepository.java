@@ -70,6 +70,7 @@ public class FileWaitlistRepository implements WaitlistRepository {
      */
     @Override
     public void saveAll(List<WaitlistEntry> entries) {
-        FileUtils.writeJson(FILE, entries);
+        List<WaitlistEntry> snapshot = new ArrayList<>(entries);
+        FileUtils.writeJson(FILE, snapshot);
     }
 }

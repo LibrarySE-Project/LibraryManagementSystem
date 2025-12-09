@@ -3,6 +3,10 @@ package librarySE.app;
 import librarySE.managers.*;
 import librarySE.managers.reports.ReportManager;
 import librarySE.repo.BorrowRecordRepository;
+import librarySE.repo.FileBorrowRecordRepository;
+import librarySE.repo.FileItemRepository;
+import librarySE.repo.FileUserRepository;
+import librarySE.repo.FileWaitlistRepository;
 import librarySE.repo.ItemRepository;
 import librarySE.repo.UserRepository;
 import librarySE.repo.WaitlistRepository;
@@ -70,11 +74,12 @@ public class LibraryGuiApp {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
 
-            // 1) Repositories (in-memory implementations for GUI run)
-            ItemRepository itemRepo = new InMemoryItemRepository();
-            BorrowRecordRepository borrowRepo = new InMemoryBorrowRecordRepository();
-            WaitlistRepository waitlistRepo = new InMemoryWaitlistRepository();
-            UserRepository userRepo = new InMemoryUserRepository();
+        	// 1) Repositories (file-based implementations)
+        	ItemRepository itemRepo = new FileItemRepository();
+        	BorrowRecordRepository borrowRepo = new FileBorrowRecordRepository();
+        	WaitlistRepository waitlistRepo = new FileWaitlistRepository();
+        	UserRepository userRepo = new FileUserRepository();
+
 
             // 2) Managers
             ItemManager.init(itemRepo, new KeywordSearchStrategy());
@@ -106,69 +111,4 @@ public class LibraryGuiApp {
         });
     }
 
-    // --------- In-memory Repositories (for GUI run; replace with real repos if needed) ---------
-
-    private static class InMemoryItemRepository implements ItemRepository {
-        private final List<librarySE.core.LibraryItem> items =
-                new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<librarySE.core.LibraryItem> loadAll() {
-            return new ArrayList<>(items);
-        }
-
-        @Override
-        public void saveAll(List<librarySE.core.LibraryItem> list) {
-            items.clear();
-            items.addAll(list);
-        }
-    }
-
-    private static class InMemoryBorrowRecordRepository implements BorrowRecordRepository {
-        private final List<BorrowRecord> records =
-                new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<BorrowRecord> loadAll() {
-            return new ArrayList<>(records);
-        }
-
-        @Override
-        public void saveAll(List<BorrowRecord> list) {
-            records.clear();
-            records.addAll(list);
-        }
-    }
-
-    private static class InMemoryWaitlistRepository implements WaitlistRepository {
-        private final List<librarySE.core.WaitlistEntry> entries =
-                new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<librarySE.core.WaitlistEntry> loadAll() {
-            return new ArrayList<>(entries);
-        }
-
-        @Override
-        public void saveAll(List<librarySE.core.WaitlistEntry> list) {
-            entries.clear();
-            entries.addAll(list);
-        }
-    }
-
-    private static class InMemoryUserRepository implements UserRepository {
-        private final List<User> users =
-                new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<User> loadAll() {
-            return new ArrayList<>(users);
-        }
-
-        @Override
-        public void saveAll(List<User> list) {
-            users.clear();
-            users.addAll(list);
-        }
-    }
 }

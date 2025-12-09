@@ -1,0 +1,12 @@
+[
+  {
+    "type": "BOOK",
+    "isbn": "1235",
+    "title": "java",
+    "author": "x",
+    "totalCopies": 6,
+    "availableCopies": 6,
+    "id": "9137c7a1-ee96-4c0b-adce-71ed9cb85cca",
+    "price": 20
+  }
+]
