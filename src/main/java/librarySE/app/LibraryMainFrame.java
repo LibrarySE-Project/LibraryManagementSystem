@@ -21,15 +21,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Main Swing window for the Library Management System.
- *
- * For ADMIN role:
- *  - Manage books/media (add, search).
- *  - Manage users (register / unregister).
- *  - View borrow & fines, return items, pay fines.
- *  - Generate reports and send reminders.
- */
+
 public class LibraryMainFrame extends JFrame {
 
     private static final long serialVersionUID = 1L;
@@ -115,7 +107,6 @@ public class LibraryMainFrame extends JFrame {
     private void initUi() {
         setLayout(new BorderLayout());
 
-        // ====== Top header (nice bar instead of login panel) ======
         JPanel header = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -123,7 +114,6 @@ public class LibraryMainFrame extends JFrame {
                 Graphics2D g2 = (Graphics2D) g.create();
                 int w = getWidth();
                 int h = getHeight();
-                // same "girly" palette as login
                 Color c1 = new Color(255, 182, 193);
                 Color c2 = new Color(135, 206, 235);
                 GradientPaint gp = new GradientPaint(0, 0, c1, w, h, c2);
@@ -172,9 +162,7 @@ public class LibraryMainFrame extends JFrame {
         add(tabs, BorderLayout.CENTER);
     }
 
-    // ------------------------------------------------------------
-    // Logout -> back to login frame
-    // ------------------------------------------------------------
+
     private void handleLogout() {
         loginManager.logout();
         JOptionPane.showMessageDialog(this, "You have been logged out.");
@@ -190,7 +178,6 @@ public class LibraryMainFrame extends JFrame {
         loginFrame.setVisible(true);
     }
 
-    // ===================== Books / Media Panel =====================
 
     private JPanel createAdminItemsPanel() {
         JPanel root = new JPanel(new BorderLayout());
@@ -337,13 +324,7 @@ public class LibraryMainFrame extends JFrame {
         return panel;
     }
 
-    /**
-     * Finds an existing LibraryItem that matches the identifying fields
-     * for each material type:
-     *  - BOOK:    same ISBN
-     *  - CD:      same title + artist
-     *  - JOURNAL: same title + editor + issue
-     */
+
     private LibraryItem findExistingItem(MaterialType type,
                                          String title,
                                          String person,
@@ -395,9 +376,7 @@ public class LibraryMainFrame extends JFrame {
         return null;
     }
 
-    /**
-     * Returns true if given item has any active (not returned) borrow records.
-     */
+
     private boolean hasActiveLoansForItem(LibraryItem item) {
         if (item == null) return false;
 
@@ -408,9 +387,7 @@ public class LibraryMainFrame extends JFrame {
                                 && !r.isReturned());
     }
 
-    /**
-     * Deletes the currently selected item in the Search table (if allowed).
-     */
+
     private void handleDeleteSelectedItem() {
         int row = itemsTable.getSelectedRow();
         if (row < 0) {
@@ -436,7 +413,6 @@ public class LibraryMainFrame extends JFrame {
             return;
         }
 
-        // prevent deletion if there are active loans
         if (hasActiveLoansForItem(item)) {
             JOptionPane.showMessageDialog(this,
                     "Cannot delete this item because there are active borrow records.",
@@ -457,7 +433,6 @@ public class LibraryMainFrame extends JFrame {
         }
 
         try {
-            // requires ItemManager to have removeItem(...)
             itemManager.deleteItem(item, admin);
             itemManager.saveAll();
 
@@ -490,7 +465,7 @@ public class LibraryMainFrame extends JFrame {
         String issue = issueNumberField.getText().trim();
         int copies = (Integer) copiesSpinner.getValue();
 
-        // ====== check for existing item (by key per type) ======
+        // check for existing item (by key per type)
         LibraryItem existing = findExistingItem(type, title, person, isbn, issue);
         if (existing != null) {
             int choice = JOptionPane.showConfirmDialog(
@@ -504,9 +479,8 @@ public class LibraryMainFrame extends JFrame {
             if (choice == JOptionPane.YES_OPTION) {
                 openEditItemDialog(existing);
             }
-            return; // لا نضيف آيتم جديد
+            return;
         }
-        // ======================================================
 
         try {
             LibraryItem item;
@@ -544,7 +518,7 @@ public class LibraryMainFrame extends JFrame {
             }
 
             itemManager.addItem(item, admin);
-            itemManager.saveAll(); // حفظ في الملف
+            itemManager.saveAll();
 
             JOptionPane.showMessageDialog(this,
                     "Item added successfully: " + item.getTitle());
@@ -586,13 +560,12 @@ public class LibraryMainFrame extends JFrame {
         }
     }
 
-    // ===================== Users Management Panel =====================
 
     private JPanel createUserManagementPanel() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // ---- top: add user form ----
+        // top: add user form
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createTitledBorder("Register New User"));
 
@@ -626,7 +599,7 @@ public class LibraryMainFrame extends JFrame {
 
         addUserButton.addActionListener(e -> handleAddUser());
 
-        // ---- center: users table ----
+        // center: users table
         usersTableModel = new DefaultTableModel(
                 new Object[]{"Username", "Email", "Role", "Fine Balance"}, 0) {
             @Override
@@ -688,6 +661,8 @@ public class LibraryMainFrame extends JFrame {
             newUserPassField.setText("");
             newUserEmailField.setText("");
             refreshUsersTable();
+            // update borrow tab combo as well
+            loadUsersIntoCombo();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     ex.getMessage(), "Add User Error", JOptionPane.ERROR_MESSAGE);
@@ -714,13 +689,6 @@ public class LibraryMainFrame extends JFrame {
             return;
         }
 
-        if (user.getRole() == Role.ADMIN) {
-            JOptionPane.showMessageDialog(this,
-                    "Cannot unregister admin account.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Unregister user '" + user.getUsername() + "'?",
                 "Confirm", JOptionPane.YES_NO_OPTION);
@@ -729,23 +697,21 @@ public class LibraryMainFrame extends JFrame {
         }
 
         try {
-            // assumes domain layer enforces: no active loans / unpaid fines
             userManager.unregisterUser(user);
             userManager.saveAll();
             JOptionPane.showMessageDialog(this, "User unregistered.");
             refreshUsersTable();
+            loadUsersIntoCombo();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     ex.getMessage(), "Unregister Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // ===================== Borrow & Fines Panel =====================
 
     private JPanel createBorrowPanel() {
         JPanel root = new JPanel(new BorderLayout());
 
-        // Top: user selection + fine balance
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
         userCombo = new JComboBox<>();
         refreshUsersButton = new JButton("Refresh Users");
@@ -759,7 +725,11 @@ public class LibraryMainFrame extends JFrame {
 
         refreshUsersButton.addActionListener(e -> loadUsersIntoCombo());
 
-        // Center: split between all items + user borrows
+        userCombo.addActionListener(e -> {
+            updateFineBalanceLabel();
+            refreshUserBorrowTable();
+        });
+
         JSplitPane split = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT,
                 createBorrowFromItemsPanel(),
@@ -922,6 +892,16 @@ public class LibraryMainFrame extends JFrame {
             return;
         }
 
+        if (user.getFineBalance() != null
+                && user.getFineBalance().compareTo(BigDecimal.ZERO) > 0) {
+            JOptionPane.showMessageDialog(this,
+                    "This user has unpaid fines (" + user.getFineBalance() + ").\n" +
+                            "They must pay the fine before borrowing new items.",
+                    "Borrow Not Allowed",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         int row = allItemsTable.getSelectedRow();
         if (row < 0) {
             JOptionPane.showMessageDialog(this, "Please select an item to borrow.");
@@ -957,6 +937,7 @@ public class LibraryMainFrame extends JFrame {
                     ex.getMessage(), "Borrow Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 
     private void refreshUserBorrowTable() {
         if (userBorrowTableModel == null) {
@@ -1022,24 +1003,37 @@ public class LibraryMainFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "Please select a user.");
             return;
         }
+
         String amountText = payAmountField.getText().trim();
         if (amountText.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Enter amount.");
             return;
         }
+
         try {
             BigDecimal amount = new BigDecimal(amountText);
-            user.payFine(amount);
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Amount must be positive.");
+            }
+
+            BigDecimal currentFine = user.getFineBalance();
+            if (amount.compareTo(currentFine) > 0) {
+                throw new IllegalArgumentException(
+                        "Amount exceeds outstanding fine (" + currentFine + ").");
+            }
+
+            borrowManager.payFineForUser(user, amount, LocalDate.now());
+
             userManager.saveAll();
             updateFineBalanceLabel();
             JOptionPane.showMessageDialog(this, "Fine paid successfully.");
+
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     ex.getMessage(), "Payment Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // ===================== Reports & Reminders Panel =====================
 
     private JPanel createReportsPanel() {
         JPanel root = new JPanel(new BorderLayout());
@@ -1073,25 +1067,73 @@ public class LibraryMainFrame extends JFrame {
         LocalDate today = LocalDate.now();
         StringBuilder sb = new StringBuilder();
 
+        ReportManager reportManager =
+                new ReportManager(borrowManager.getAllBorrowRecords());
+
         sb.append("=== Top Borrowers ===\n");
         Map<User, Long> topBorrowers =
                 reportManager.activity().getTopBorrowers();
         topBorrowers.forEach((user, count) ->
-                sb.append(user.getUsername()).append(" -> ").append(count).append(" items\n"));
+                sb.append(user.getUsername())
+                  .append(" -> ")
+                  .append(count)
+                  .append(" items\n"));
 
         sb.append("\n=== Most Borrowed Items ===\n");
-        Map<LibraryItem, Long> mostItems =
+        Map<String, Long> mostItems =
                 reportManager.activity().getMostBorrowedItems();
-        mostItems.forEach((item, count) ->
-                sb.append(item.getTitle()).append(" (")
-                        .append(item.getMaterialType()).append(") -> ")
-                        .append(count).append(" borrows\n"));
+        mostItems.forEach((label, count) ->
+                sb.append(label)
+                  .append(" -> ")
+                  .append(count)
+                  .append(" borrows\n"));
 
         sb.append("\n=== Total Fines per User (as of ").append(today).append(") ===\n");
         Map<User, BigDecimal> totalFines =
                 reportManager.fines().getTotalFinesForAllUsers(today);
         totalFines.forEach((user, fine) ->
-                sb.append(user.getUsername()).append(" -> ").append(fine).append("\n"));
+                sb.append(user.getUsername())
+                  .append(" -> ")
+                  .append(fine)
+                  .append("\n"));
+
+        sb.append("\n=== Fines by Media Type per User (as of ").append(today).append(") ===\n");
+        for (User u : userManager.getAllUsers()) {
+            BigDecimal total = totalFines.getOrDefault(u, BigDecimal.ZERO);
+            if (total.compareTo(BigDecimal.ZERO) <= 0) {
+                continue; 
+            }
+            sb.append(u.getUsername()).append(":\n");
+            Map<MaterialType, BigDecimal> byType =
+                    reportManager.fines().getFinesByMediaType(u, today);
+            for (MaterialType type : MaterialType.values()) {
+                BigDecimal v = byType.getOrDefault(type, BigDecimal.ZERO);
+                if (v.compareTo(BigDecimal.ZERO) > 0) {
+                    sb.append("  - ")
+                      .append(type)
+                      .append(": ")
+                      .append(v)
+                      .append("\n");
+                }
+            }
+        }
+
+        sb.append("\n=== Overdue Items per User (as of ").append(today).append(") ===\n");
+        for (User u : userManager.getAllUsers()) {
+            List<BorrowRecord> overdue =
+                    reportManager.activity().getOverdueItemsForUser(u, today);
+            if (overdue.isEmpty()) {
+                continue;
+            }
+            sb.append(u.getUsername()).append(":\n");
+            for (BorrowRecord r : overdue) {
+                sb.append("  - ")
+                  .append(r.getItem().getTitle())
+                  .append(" (due ")
+                  .append(r.getDueDate())
+                  .append(")\n");
+            }
+        }
 
         reportArea.setText(sb.toString());
     }
@@ -1111,23 +1153,27 @@ public class LibraryMainFrame extends JFrame {
     private void handleSendReminders() {
         LocalDate today = LocalDate.now();
         try {
+            List<BorrowRecord> overdue = borrowManager.getOverdueItems(today);
+
+            if (overdue.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "There are no overdue items as of " + today + ". No reminders were sent.");
+                return;
+            }
+
             Notifier notifier = new EmailNotifier();
             NotificationManager nm = new NotificationManager(borrowManager);
             nm.sendReminders(notifier, today);
+
             JOptionPane.showMessageDialog(this,
-                    "Overdue reminders sent (check your mocked/real email service).");
+                    "Overdue reminders have been sent for " + overdue.size() + " overdue borrow records.");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     ex.getMessage(), "Reminders Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    /**
-     * Opens a small dialog to edit core properties of a {@link LibraryItem}:
-     * title, price, and total copies (for Book/CD/Journal).
-     *
-     * @param item the item to edit; must not be {@code null}
-     */
+
     private void openEditItemDialog(LibraryItem item) {
         JDialog dlg = new JDialog(this, "Edit Item", true);
         dlg.setSize(420, 260);
@@ -1205,7 +1251,6 @@ public class LibraryMainFrame extends JFrame {
                     throw new IllegalArgumentException("Price must be non-negative.");
                 }
 
-                // apply changes depending on concrete type
                 if (item instanceof Book b) {
                     b.setTitle(newTitle);
                     b.setTotalCopies(newCopies);

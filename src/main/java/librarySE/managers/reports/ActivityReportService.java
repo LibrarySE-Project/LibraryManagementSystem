@@ -1,6 +1,5 @@
 package librarySE.managers.reports;
 
-
 import librarySE.core.LibraryItem;
 import librarySE.managers.BorrowRecord;
 import librarySE.managers.User;
@@ -11,34 +10,41 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /**
- * Provides analytical reports about borrowing activities within the library system.
- * <p>
- * This service focuses on user and item statistics derived from borrowing records.
- * It supports:
+ * Provides analytical reporting features for library activity.
+ *
+ * <p>This service processes historical {@link BorrowRecord} data to generate
+ * insights such as:
  * <ul>
- *     <li>Finding top borrowers (users with the highest number of borrowed items)</li>
- *     <li>Identifying most borrowed library items</li>
- *     <li>Listing overdue items per user</li>
+ *     <li>Top users who borrow the most items</li>
+ *     <li>Most frequently borrowed books, CDs, or journals</li>
+ *     <li>Overdue items for a given user at a given date</li>
  * </ul>
- * </p>
  *
- * <p><strong>Thread-safety:</strong> Uses {@link CopyOnWriteArrayList} to safely access
- * borrowing records concurrently without risking modification conflicts.</p>
+ * <p>The class is thread-safe because it uses {@link CopyOnWriteArrayList}
+ * to store borrow records, ensuring safe iteration during concurrent updates.</p>
  *
- * @author Eman
- * 
+ * <h3>Main Responsibilities:</h3>
+ * <ul>
+ *     <li>Aggregate borrowing trends and usage statistics</li>
+ *     <li>Support admin dashboards and reporting modules</li>
+ *     <li>Detect overdue items per user</li>
+ * </ul>
+ *
+ * <p>This service is read-heavy, so immutability of the underlying list is desirable.
+ * New borrow records should be provided by rebuilding the service or exposing append methods externally.</p>
+ *
+ * @author Malak
  */
 public class ActivityReportService {
 
-    /** Thread-safe list of borrowing records used for generating reports. */
+    /** Thread-safe list of all borrow records stored for reporting. */
     private final CopyOnWriteArrayList<BorrowRecord> borrowRecords;
 
     /**
-     * Constructs an ActivityReportService that analyzes user and item activity
-     * based on the provided borrowing records.
+     * Creates a new ActivityReportService with a given list of borrow records.
      *
-     * @param borrowRecords list of all borrow records in the system
-     * @throws IllegalArgumentException if {@code borrowRecords} is {@code null}
+     * @param borrowRecords list of borrow records to analyze (must not be null)
+     * @throws IllegalArgumentException if {@code borrowRecords} is null
      */
     public ActivityReportService(List<BorrowRecord> borrowRecords) {
         if (borrowRecords == null)
@@ -47,34 +53,74 @@ public class ActivityReportService {
     }
 
     /**
-     * Returns a map of users and the number of items they have borrowed.
-     * <p>Can be used to determine the most active borrowers in the library.</p>
+     * Computes how many items each user has borrowed in total.
      *
-     * @return a map where each key is a {@link User} and each value is the count of borrowed items
+     * <p>The result groups borrow records by {@link User}, and counts
+     * how many borrowing events belong to each user.</p>
+     *
+     * @return a map where keys are users and values are count of items borrowed
      */
     public Map<User, Long> getTopBorrowers() {
         return borrowRecords.stream()
-                .collect(Collectors.groupingBy(BorrowRecord::getUser, Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        BorrowRecord::getUser,
+                        Collectors.counting()
+                ));
     }
 
     /**
-     * Returns a map of library items and how many times each was borrowed.
-     * <p>Helps identify the most popular or frequently borrowed items.</p>
+     * Determines which library items were borrowed the most.
      *
-     * @return a map where each key is a {@link LibraryItem} and each value is the borrow count
+     * <p>The key of the returned map is a readable label in the format:<br>
+     * <b>"Title (TYPE)"</b><br>
+     * For example: <i>"Clean Code (BOOK)"</i></p>
+     *
+     * <p>This method aggregates logically identical items (same title and type)
+     * even if they exist as multiple copies in the system.</p>
+     *
+     * @return a map from item label to number of times borrowed
      */
-    public Map<LibraryItem, Long> getMostBorrowedItems() {
+    public Map<String, Long> getMostBorrowedItems() {
         return borrowRecords.stream()
-                .collect(Collectors.groupingBy(BorrowRecord::getItem, Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        r -> buildItemLabel(r.getItem()),
+                        Collectors.counting()
+                ));
     }
 
     /**
-     * Retrieves a list of overdue borrow records for a specific user as of a given date.
+     * Builds a human-friendly label of a library item to unify its representation
+     * during reporting.
      *
-     * @param user the user whose overdue records are requested
-     * @param date the reference date used to check overdue status
-     * @return a list of {@link BorrowRecord}s that are overdue for the given user
-     * @throws IllegalArgumentException if {@code user} or {@code date} is {@code null}
+     * @param item the library item
+     * @return label in the format "Title (TYPE)" or "Unknown item" if null
+     */
+    private String buildItemLabel(LibraryItem item) {
+        if (item == null) {
+            return "Unknown item";
+        }
+        return item.getTitle() + " (" + item.getMaterialType() + ")";
+    }
+
+    /**
+     * Returns all overdue borrow records for a given user at a specific date.
+     *
+     * <p>The record is considered overdue if:
+     * <ul>
+     *     <li>The user matches</li>
+     *     <li>{@link BorrowRecord#isOverdue(LocalDate)} returns true for the given date</li>
+     * </ul>
+     *
+     * <p>This is commonly used for:
+     * <ul>
+     *     <li>Admin overdue reports</li>
+     *     <li>Sending reminders or fines</li>
+     * </ul></p>
+     *
+     * @param user the user whose overdue items should be checked
+     * @param date the reference date to compare against due dates
+     * @return list of overdue borrow records for that user
+     * @throws IllegalArgumentException if {@code user} or {@code date} is null
      */
     public List<BorrowRecord> getOverdueItemsForUser(User user, LocalDate date) {
         if (user == null || date == null)

@@ -12,13 +12,7 @@ import librarySE.managers.UserManager;
 import javax.swing.*;
 import java.awt.*;
 
-/**
- * Pretty login window with gradient background.
- * <p>
- * - If credentials match the Admin account -> open LibraryMainFrame (admin GUI).
- * - Else if username matches a normal user -> open LibraryUserFrame (user GUI).
- * - Else -> show error message.
- */
+
 public class LibraryLoginFrame extends JFrame {
 
     private final LoginManager loginManager;
@@ -33,7 +27,6 @@ public class LibraryLoginFrame extends JFrame {
     private JToggleButton showPasswordButton;
     private JButton loginButton;
 
-    /** original echo char for password field (used when hiding password again). */
     private char defaultEchoChar;
 
     public LibraryLoginFrame(LoginManager loginManager,
@@ -160,21 +153,18 @@ public class LibraryLoginFrame extends JFrame {
         c.gridy = 2;
         gradientPanel.add(formPanel, c);
 
-        // Events
+
         loginButton.addActionListener(e -> handleLogin());
         passwordField.addActionListener(e -> handleLogin()); 
 
         setContentPane(gradientPanel);
     }
 
-    /** Toggle show/hide for password field. */
     private void togglePasswordVisibility() {
         if (showPasswordButton.isSelected()) {
-            // Show password
             passwordField.setEchoChar((char) 0);
             showPasswordButton.setText("Hide password");
         } else {
-            // Hide password
             passwordField.setEchoChar(defaultEchoChar);
             showPasswordButton.setText("Show password");
         }
@@ -236,15 +226,18 @@ public class LibraryLoginFrame extends JFrame {
         dispose();
     }
 
-    private void openUserGui(User user) {
-        LibraryUserFrame userFrame = new LibraryUserFrame(
-                itemManager,
-                borrowManager,
-                userManager,
-                reportManager,
-                user
-        );
-        userFrame.setVisible(true);
-        dispose();
-    }
+
+	private void openUserGui(User user) {
+	    LibraryUserFrame userFrame = new LibraryUserFrame(
+	            loginManager,   
+	            admin,          
+	            itemManager,
+	            borrowManager,
+	            userManager,
+	            reportManager,
+	            user
+	    );
+	    userFrame.setVisible(true);
+	    dispose();
+	}
 }
