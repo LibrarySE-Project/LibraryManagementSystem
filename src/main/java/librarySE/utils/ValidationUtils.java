@@ -3,39 +3,90 @@ package librarySE.utils;
 import java.util.regex.Pattern;
 
 /**
- * Utility class for validating user inputs across the library system.
- * <p>
- * Provides centralized validation methods for checking string emptiness,
- * email format, password strength, and general input consistency.
- * </p>
+ * <p><b>ValidationUtils</b> is a utility class that centralizes all input
+ * validation logic used throughout the Library Management System.</p>
  *
- * <p>All methods are static and thread-safe.</p>
+ * <p>The class provides static, thread-safe methods for validating:</p>
+ * <ul>
+ *     <li>Non-empty strings and object fields</li>
+ *     <li>Email address correctness using a predefined regex pattern</li>
+ *     <li>Password strength based on system security rules</li>
+ * </ul>
+ *
+ * <p>This ensures all modules (Login, UserManager, AdminPanel, etc.) rely on
+ * a single, consistent validation mechanism.</p>
+ *
+ * <p><b>Design notes:</b></p>
+ * <ul>
+ *     <li>The class is {@code final} and has a private constructor → cannot be instantiated.</li>
+ *     <li>All methods are {@code static} → convenient for global use.</li>
+ *     <li>The validators throw {@link IllegalArgumentException} when invalid.</li>
+ * </ul>
  *
  * @author Eman
+ * @version 1.1
  */
 public final class ValidationUtils {
 
-    /** Regular expression pattern for validating email addresses. */
+    /**
+     * Regular expression for validating email addresses.
+     * <p>
+     * Accepted domains:
+     * <ul>
+     *     <li>.com</li>
+     *     <li>.net</li>
+     *     <li>.edu</li>
+     *     <li>.org</li>
+     *     <li>.ps</li>
+     * </ul>
+     * <p>
+     * This keeps the validation strict but still suitable for academic emails
+     * (e.g., student@najah.edu).
+     * </p>
+     */
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.(com|net|edu|org|ps)$"
     );
 
-    /** Regex for simple password strength (at least one letter and one digit). */
+    /**
+     * Regular expression enforcing password security rules:
+     * <ul>
+     *     <li>Minimum length: 6 characters</li>
+     *     <li>Contains at least one letter</li>
+     *     <li>Contains at least one digit</li>
+     *     <li>Allows optional symbols: @ $ ! % * # ? &</li>
+     * </ul>
+     * <p>
+     * The rule matches the project requirement:
+     * <i>"Password must include both letters and digits."</i>
+     * </p>
+     */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{6,}$"
     );
 
-    /** Private constructor to prevent instantiation. */
+    /** Private constructor — prevents instantiation. */
     private ValidationUtils() {}
 
 
+    // ========================================================================
+    //  requireNonEmpty
+    // ========================================================================
+
     /**
-     * Ensures that a value is not {@code null}, and if it's a string,
-     * ensures it is not empty after trimming.
+     * Validates that a given value is not {@code null}, and if it is a string,
+     * ensures it is not empty or whitespace only.
      *
-     * @param value the value to validate
-     * @param field the field name for error messages
-     * @throws IllegalArgumentException if {@code value} is {@code null} or empty
+     * <p>Typical use cases: validating username, title, item fields, etc.</p>
+     *
+     * @param value the value to validate (String or any object)
+     * @param field the logical field name for error messages
+     *
+     * @throws IllegalArgumentException if:
+     *     <ul>
+     *         <li>{@code value} is {@code null}</li>
+     *         <li>{@code value} is a blank string</li>
+     *     </ul>
      */
     public static void requireNonEmpty(Object value, String field) {
         if (value == null)
@@ -46,12 +97,28 @@ public final class ValidationUtils {
     }
 
 
+    // ========================================================================
+    //  validateEmail
+    // ========================================================================
+
     /**
-     * Validates an email address against a fixed pattern.
-     * Accepts .com, .net, .edu, .org, .ps domains.
+     * Validates an email address according to the system's strict format rules.
      *
-     * @param email the email address to validate
-     * @throws IllegalArgumentException if invalid
+     * <p>The validation ensures the email:</p>
+     * <ul>
+     *     <li>Is not null or blank</li>
+     *     <li>Matches the predefined {@link #EMAIL_PATTERN}</li>
+     * </ul>
+     *
+     * <p>Examples of valid emails:</p>
+     * <ul>
+     *     <li>user@gmail.com</li>
+     *     <li>student@najah.edu</li>
+     *     <li>admin@organization.org</li>
+     * </ul>
+     *
+     * @param email the email string to validate
+     * @throws IllegalArgumentException if the email is null or invalid
      */
     public static void validateEmail(String email) {
         if (email == null)
@@ -61,22 +128,42 @@ public final class ValidationUtils {
 
         if (!EMAIL_PATTERN.matcher(trimmed).matches())
             throw new IllegalArgumentException(
-                    "Invalid email format. Example: name@gmail.com or user@najah.edu"
+                    "Invalid email format. Example: name@gmail.com or student@najah.edu"
             );
     }
 
+
+    // ========================================================================
+    //  validatePassword
+    // ========================================================================
+
     /**
-     * Validates password strength and minimum security requirements.
-     * <p>
-     * Rules:
+     * Validates password strength based on the system's security requirements.
+     *
+     * <p>Rules enforced by {@link #PASSWORD_PATTERN}:</p>
      * <ul>
-     *   <li>At least 6 characters long</li>
-     *   <li>Contains at least one letter and one digit</li>
+     *     <li>Minimum length: 6 characters</li>
+     *     <li>At least one letter</li>
+     *     <li>At least one digit</li>
+     *     <li>May include certain special symbols</li>
      * </ul>
-     * </p>
+     *
+     * <p>Examples of valid passwords:</p>
+     * <ul>
+     *     <li>{@code pass123}</li>
+     *     <li>{@code A1b2c3}</li>
+     *     <li>{@code adm123456A9}</li>
+     * </ul>
+     *
+     * <p>If validation fails, the method throws an exception with a clear, uniform message.</p>
      *
      * @param password the password string to validate
-     * @throws IllegalArgumentException if the password is weak or invalid
+     *
+     * @throws IllegalArgumentException if:
+     *     <ul>
+     *         <li>Password is null</li>
+     *         <li>Password does not satisfy strength rules</li>
+     *     </ul>
      */
     public static void validatePassword(String password) {
         if (password == null)

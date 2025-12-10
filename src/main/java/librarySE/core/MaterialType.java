@@ -27,11 +27,7 @@ import librarySE.strategy.FineStrategyFactory;
  * }</pre>
  *
  * @author Eman
- * @see librarySE.strategy.FineStrategy
- * @see librarySE.strategy.FineStrategyFactory
- * @see Book
- * @see CD
- * @see Journal
+ * 
  */
 public enum MaterialType {
 

@@ -29,9 +29,7 @@ import librarySE.utils.ValidationUtils;
  * }</pre>
  *
  * @author Malak
- * @see AbstractLibraryItem
- * @see MaterialType
- * @see ValidationUtils
+ * 
  */
 public class CD extends AbstractLibraryItem {
 

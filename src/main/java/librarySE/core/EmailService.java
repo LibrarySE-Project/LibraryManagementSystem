@@ -22,7 +22,7 @@ import java.util.Properties;
  * </pre>
  *
  * @author Eman
- * @version 1.1
+ * 
  */
 public class EmailService {
 

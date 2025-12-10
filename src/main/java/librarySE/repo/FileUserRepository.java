@@ -43,9 +43,7 @@ import java.util.*;
  * }</pre>
  *
  * @author Malak
- * @see librarySEv2.repo.UserRepository
- * @see librarySEv2.managers.User
- * @see librarySEv2.utils.FileUtils
+ * 
  */
 public class FileUserRepository implements UserRepository {
 

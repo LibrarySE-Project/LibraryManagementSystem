@@ -30,10 +30,7 @@ import librarySE.utils.ValidationUtils;
  * </ul>
  * 
  * @author Eman
- * @see LibraryItem
- * @see Book
- * @see CD
- * @see Journal
+ * 
  */
 public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
 

@@ -29,7 +29,7 @@ import java.util.List;
  * </pre>
  *
  * @author Malak
- * @version 1.0
+ * 
  */
 public class ReportManager {
 

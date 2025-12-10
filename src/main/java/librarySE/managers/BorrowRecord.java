@@ -51,9 +51,6 @@ import java.time.temporal.ChronoUnit;
  * }</pre>
  *
  * @author Eman
- * @see User
- * @see LibraryItem
- * @see FineStrategy
  */
 public class BorrowRecord implements Serializable {
 
