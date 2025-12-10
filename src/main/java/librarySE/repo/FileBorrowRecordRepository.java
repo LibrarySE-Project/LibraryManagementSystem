@@ -53,6 +53,7 @@ public class FileBorrowRecordRepository implements BorrowRecordRepository {
      */
     @Override
     public void saveAll(List<BorrowRecord> records) {
-        FileUtils.writeJson(FILE, records);
+        List<BorrowRecord> snapshot = new ArrayList<>(records);
+        FileUtils.writeJson(FILE, snapshot);
     }
 }

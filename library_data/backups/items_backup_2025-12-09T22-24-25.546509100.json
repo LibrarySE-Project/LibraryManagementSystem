@@ -1,0 +1,28 @@
+[
+  {
+    "isbn": "12345",
+    "title": "java",
+    "author": "x",
+    "totalCopies": 20,
+    "availableCopies": 20,
+    "id": "f5d7465b-03fd-4fc5-9c51-91f96f1f3eae",
+    "price": 30
+  },
+  {
+    "title": "java",
+    "artist": "x",
+    "totalCopies": 5,
+    "availableCopies": 5,
+    "id": "a5b69377-cb21-4905-81e9-d2fefef7eb7a",
+    "price": 10
+  },
+  {
+    "title": "java",
+    "editor": "xy",
+    "issueNumber": "2",
+    "totalCopies": 3,
+    "availableCopies": 3,
+    "id": "cf4e0b73-5191-42b7-a306-9a183d629efa",
+    "price": 25
+  }
+]
