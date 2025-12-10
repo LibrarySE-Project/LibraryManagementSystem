@@ -2,9 +2,11 @@ package librarySE.managers;
 
 import librarySE.core.LibraryItem;
 import librarySE.strategy.FineStrategy;
+
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 /**
@@ -32,25 +34,6 @@ import java.time.temporal.ChronoUnit;
  * The class implements {@link Serializable} to support persistent storage
  * in JSON or binary format for future auditing and reporting.
  * </p>
- *
- * <h3>Example Usage:</h3>
- * <pre>{@code
- * User user = new User("Eman", Role.USER, "pass123", "eman@najah.edu");
- * LibraryItem book = new Book("978-0134685991", "Effective Java", "Joshua Bloch");
- * FineStrategy fineStrategy = FineStrategyFactory.book();
- *
- * BorrowRecord record = new BorrowRecord(user, book, fineStrategy, LocalDate.of(2025, 11, 1));
- *
- * // Simulate checking after 35 days (7 days late)
- * record.calculateFine(LocalDate.of(2025, 12, 6));
- * System.out.println(record.getFine(LocalDate.now())); // Prints overdue fine
- *
- * // Return item
- * record.markReturned(LocalDate.of(2025, 12, 6));
- * System.out.println(record);
- * }</pre>
- *
- * @author Eman
  */
 public class BorrowRecord implements Serializable {
 
@@ -63,8 +46,21 @@ public class BorrowRecord implements Serializable {
     /** The borrowed item (e.g., Book, CD, Journal). */
     private final LibraryItem item;
 
-    /** Fine strategy defining rate and allowed borrow period. */
-    private  FineStrategy fineStrategy;
+    /**
+     * Fine strategy defining rate and allowed borrow period.
+     *
+     * <p>
+     * Marked as {@code transient} so it is NOT serialized into JSON,
+     * because {@link FineStrategy} is an interface and cannot be
+     * instantiated directly by Gson.
+     * </p>
+     *
+     * <p>
+     * After loading from file, the strategy is reconstructed on demand
+     * using {@link #ensureFineStrategy()} based on the item's material type.
+     * </p>
+     */
+    private transient FineStrategy fineStrategy;
 
     /** Borrow period in days (defined by the fine strategy). */
     private final int borrowPeriodDays;
@@ -87,7 +83,6 @@ public class BorrowRecord implements Serializable {
     /** Current borrowing status (BORROWED or RETURNED). */
     private Status status = Status.BORROWED;
 
-
     /**
      * Creates a new borrow record linking a {@link User}, {@link LibraryItem}, and {@link FineStrategy}.
      * <p>
@@ -100,9 +95,14 @@ public class BorrowRecord implements Serializable {
      * @param borrowDate    the borrow date (must not be null)
      * @throws IllegalArgumentException if any argument is null
      */
-    public BorrowRecord(User user, LibraryItem item, FineStrategy fineStrategy, LocalDate borrowDate) {
-        if (user == null || item == null || fineStrategy == null || borrowDate == null)
+    public BorrowRecord(User user,
+                        LibraryItem item,
+                        FineStrategy fineStrategy,
+                        LocalDate borrowDate) {
+
+        if (user == null || item == null || fineStrategy == null || borrowDate == null) {
             throw new IllegalArgumentException("BorrowRecord: arguments cannot be null.");
+        }
 
         this.user = user;
         this.item = item;
@@ -110,6 +110,20 @@ public class BorrowRecord implements Serializable {
         this.borrowPeriodDays = fineStrategy.getBorrowPeriodDays();
         this.borrowDateTime = borrowDate.atStartOfDay();
         this.dueDateTime = borrowDateTime.plusDays(borrowPeriodDays);
+    }
+
+    /**
+     * Ensures that {@link #fineStrategy} is initialized.
+     * <p>
+     * When records are loaded from JSON, the strategy field is not
+     * deserialized (it is transient). This method reconstructs it
+     * from the item's material type if needed.
+     * </p>
+     */
+    public void ensureFineStrategy() {
+        if (fineStrategy == null && item != null && item.getMaterialType() != null) {
+            fineStrategy = item.getMaterialType().createFineStrategy();
+        }
     }
 
     /** @return the user who borrowed the item */
@@ -147,7 +161,6 @@ public class BorrowRecord implements Serializable {
         return fine.subtract(finePaid);
     }
 
-
     /**
      * Updates the paid fine amount.
      *
@@ -155,10 +168,12 @@ public class BorrowRecord implements Serializable {
      * @throws IllegalArgumentException if invalid payment amount
      */
     public void setFinePaid(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0)
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Paid amount cannot be null or negative.");
-        if (amount.compareTo(fine) > 0)
+        }
+        if (amount.compareTo(fine) > 0) {
             throw new IllegalArgumentException("Paid amount cannot exceed total fine.");
+        }
         this.finePaid = amount;
     }
 
@@ -173,11 +188,16 @@ public class BorrowRecord implements Serializable {
      * @throws IllegalArgumentException if {@code currentDate} is null
      */
     public void calculateFine(LocalDate currentDate) {
-        if (currentDate == null)
+        if (currentDate == null) {
             throw new IllegalArgumentException("Current date cannot be null.");
+        }
+
+        // Make sure fineStrategy is ready (especially after deserialization)
+        ensureFineStrategy();
 
         if (!isReturned() && currentDate.atStartOfDay().isAfter(dueDateTime)) {
-            long daysOverdue = ChronoUnit.DAYS.between(dueDateTime.toLocalDate(), currentDate);
+            long daysOverdue =
+                    ChronoUnit.DAYS.between(dueDateTime.toLocalDate(), currentDate);
             fine = fineStrategy.calculateFine(daysOverdue);
         } else {
             fine = BigDecimal.ZERO;
@@ -197,7 +217,6 @@ public class BorrowRecord implements Serializable {
         }
     }
 
-
     /**
      * Marks the borrowed item as returned and updates user fines accordingly.
      *
@@ -205,9 +224,9 @@ public class BorrowRecord implements Serializable {
      */
     public void markReturned(LocalDate returnDate) {
         applyFineToUser(returnDate);
-        item.returnItem();
         status = Status.RETURNED;
     }
+
 
     /**
      * Checks whether the borrowed item is overdue based on a given date.
@@ -216,11 +235,11 @@ public class BorrowRecord implements Serializable {
      * @return {@code true} if the item is overdue and not yet returned
      */
     public boolean isOverdue(LocalDate currentDate) {
-        if (currentDate == null)
+        if (currentDate == null) {
             throw new IllegalArgumentException("Current date cannot be null.");
+        }
         return !isReturned() && currentDate.atStartOfDay().isAfter(dueDateTime);
     }
-
 
     /**
      * Returns a string representation of this borrow record, including:
@@ -236,7 +255,13 @@ public class BorrowRecord implements Serializable {
     @Override
     public String toString() {
         return "%s borrowed \"%s\" on %s (due: %s) | Status: %s | Fine: %s"
-                .formatted(user.getUsername(), item.getTitle(), getBorrowDate(),
-                        getDueDate(), status, fine);
+                .formatted(
+                        user.getUsername(),
+                        item.getTitle(),
+                        getBorrowDate(),
+                        getDueDate(),
+                        status,
+                        fine
+                );
     }
 }

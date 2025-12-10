@@ -93,8 +93,6 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
      */
     protected AbstractLibraryItem() {
         this.id = UUID.randomUUID();
-        // optional eager initialization (not strictly required,
-        // but harmless and useful for freshly constructed instances)
         this.lock = new ReentrantLock();
     }
 

@@ -15,31 +15,9 @@ import librarySE.search.KeywordSearchStrategy;
 import io.github.cdimascio.dotenv.Dotenv;
 
 import javax.swing.SwingUtilities;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * Entry point for the GUI-based Library Management System.
- *
- * Responsibilities:
- *  - Load admin credentials from .env file.
- *  - Initialize repositories and managers (Item/Borrow/User/Waitlist).
- *  - Create the ReportManager.
- *  - Open the initial login window (LibraryLoginFrame).
- */
 public class LibraryGuiApp {
 
-    /**
-     * Reads admin credentials from .env and initializes the Admin singleton.
-     *
-     * Expected keys in .env:
-     *  - ADMIN_USERNAME
-     *  - ADMIN_PASSWORD
-     *  - ADMIN_EMAIL
-     *
-     * If any key is missing/blank, a default value is used.
-     */
     private static Admin initAdminFromEnv() {
         Dotenv dotenv = Dotenv.configure()
                 .ignoreIfMissing()
@@ -70,35 +48,32 @@ public class LibraryGuiApp {
         return s == null || s.trim().isEmpty();
     }
 
-    // ===== main =====
+  
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
 
-        	// 1) Repositories (file-based implementations)
-        	ItemRepository itemRepo = new FileItemRepository();
-        	BorrowRecordRepository borrowRepo = new FileBorrowRecordRepository();
-        	WaitlistRepository waitlistRepo = new FileWaitlistRepository();
-        	UserRepository userRepo = new FileUserRepository();
+            ItemRepository itemRepo = new FileItemRepository();
+            BorrowRecordRepository borrowRepo = new FileBorrowRecordRepository();
+            WaitlistRepository waitlistRepo = new FileWaitlistRepository();
+            UserRepository userRepo = new FileUserRepository();
 
-
-            // 2) Managers
             ItemManager.init(itemRepo, new KeywordSearchStrategy());
-            BorrowManager.init(borrowRepo, waitlistRepo);
             UserManager.init(userRepo);
 
             ItemManager itemManager = ItemManager.getInstance();
+
+
+            BorrowManager.init(borrowRepo, waitlistRepo, itemManager);
             BorrowManager borrowMgr = BorrowManager.getInstance();
+
             UserManager userManager = UserManager.getInstance();
 
-            // 3) Admin from .env + LoginManager
             Admin admin = initAdminFromEnv();
             LoginManager loginManager = new LoginManager(admin);
 
-            // 4) ReportManager
             ReportManager reportManager =
                     new ReportManager(borrowMgr.getAllBorrowRecords());
 
-            // 5) Open login window
             LibraryLoginFrame loginFrame = new LibraryLoginFrame(
                     loginManager,
                     admin,

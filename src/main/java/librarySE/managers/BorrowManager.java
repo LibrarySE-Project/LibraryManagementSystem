@@ -34,34 +34,44 @@ import java.util.stream.Collectors;
  * with valid credentials in the <b>.env</b> file.</p>
  *
  * @author Malak
- * 
  */
 public class BorrowManager {
 
-    /** Singleton instance */
+    /** Singleton instance. */
     private static BorrowManager instance;
 
-    /** Thread-safe list of borrowing records */
+    /** Thread-safe list of borrowing records. */
     private final CopyOnWriteArrayList<BorrowRecord> borrowRecords;
 
-    /** Thread-safe list of waitlist entries */
+    /** Thread-safe list of waitlist entries. */
     private final CopyOnWriteArrayList<WaitlistEntry> waitlist;
 
-    /** Repository for saving and loading borrow records */
+    /** Repository for saving and loading borrow records. */
     private final BorrowRecordRepository borrowRepo;
 
-    /** Repository for saving and loading waitlist entries */
+    /** Repository for saving and loading waitlist entries. */
     private final WaitlistRepository waitlistRepo;
+
+    /**
+     * Manager for library items. Used so that borrow / return operations
+     * can persist updated copy counts to {@code items.json}.
+     */
+    private final ItemManager itemManager;
 
     /**
      * Private constructor used for initialization.
      *
-     * @param borrowRepo   repository for borrow records
-     * @param waitlistRepo repository for waitlist entries
+     * @param borrowRepo   repository for borrow records (JSON-based)
+     * @param waitlistRepo repository for waitlist entries (JSON-based)
+     * @param itemManager  manager used to persist changes to {@link LibraryItem} objects
      */
-    private BorrowManager(BorrowRecordRepository borrowRepo, WaitlistRepository waitlistRepo) {
+    private BorrowManager(BorrowRecordRepository borrowRepo,
+                          WaitlistRepository waitlistRepo,
+                          ItemManager itemManager) {
         this.borrowRepo = Objects.requireNonNull(borrowRepo, "BorrowRecordRepository cannot be null.");
         this.waitlistRepo = Objects.requireNonNull(waitlistRepo, "WaitlistRepository cannot be null.");
+        this.itemManager = Objects.requireNonNull(itemManager, "ItemManager cannot be null.");
+
         this.borrowRecords = new CopyOnWriteArrayList<>(borrowRepo.loadAll());
         this.waitlist = new CopyOnWriteArrayList<>(waitlistRepo.loadAll());
     }
@@ -71,10 +81,15 @@ public class BorrowManager {
      *
      * @param borrowRepo   repository for borrow records
      * @param waitlistRepo repository for waitlist entries
+     * @param itemManager  manager for items (for persisting copy counts)
      * @return the initialized {@link BorrowManager} instance
      */
-    public static synchronized BorrowManager init(BorrowRecordRepository borrowRepo, WaitlistRepository waitlistRepo) {
-        if (instance == null) instance = new BorrowManager(borrowRepo, waitlistRepo);
+    public static synchronized BorrowManager init(BorrowRecordRepository borrowRepo,
+                                                  WaitlistRepository waitlistRepo,
+                                                  ItemManager itemManager) {
+        if (instance == null) {
+            instance = new BorrowManager(borrowRepo, waitlistRepo, itemManager);
+        }
         return instance;
     }
 
@@ -89,6 +104,9 @@ public class BorrowManager {
         return instance;
     }
 
+    // =====================================================================
+    // Borrow / Return
+    // =====================================================================
 
     /**
      * Attempts to borrow an item for a user.
@@ -105,16 +123,21 @@ public class BorrowManager {
             throw new IllegalArgumentException("User and item cannot be null.");
 
         LocalDate today = LocalDate.now();
+
+        // Make sure all overdue records have their fines applied to the user
         applyOverdueFines(today);
 
+        // Block borrowing if user has unpaid fines
         if (user.hasOutstandingFine())
             throw new IllegalStateException("Cannot borrow: unpaid fines exist.");
 
+        // Block borrowing if user still has overdue items
         boolean hasOverdue = getBorrowRecordsForUser(user)
                 .stream().anyMatch(r -> r.isOverdue(today));
         if (hasOverdue)
             throw new IllegalStateException("Cannot borrow: overdue items exist.");
 
+        // If no copies available -> add user to waitlist
         if (!item.isAvailable()) {
             WaitlistEntry entry = new WaitlistEntry(item.getId(), user.getEmail(), LocalDate.now());
             waitlist.add(entry);
@@ -123,13 +146,18 @@ public class BorrowManager {
             return false;
         }
 
+        // Try to decrement available copy
         if (!item.borrow())
             throw new IllegalStateException("Failed to borrow item.");
 
+        // Create a new BorrowRecord with appropriate fine strategy
         FineStrategy strategy = item.getMaterialType().createFineStrategy();
         BorrowRecord record = new BorrowRecord(user, item, strategy, today);
         borrowRecords.add(record);
         borrowRepo.saveAll(borrowRecords);
+
+        // ✅ Persist new availableCopies / totalCopies to items.json
+        itemManager.saveAll();
 
         System.out.println("✅ Item borrowed successfully: " + item.getTitle() + " by " + user.getUsername());
         return true;
@@ -150,13 +178,19 @@ public class BorrowManager {
         applyOverdueFines(today);
 
         BorrowRecord record = borrowRecords.stream()
-                .filter(r -> r.getItem().equals(item)
-                        && r.getUser().equals(user)
-                        && !r.isReturned())
+                .filter(r -> 
+                        r.getUser().getId().equals(user.getId()) &&   
+                        r.getItem().getId().equals(item.getId()) &&  
+                        !r.isReturned())
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No active borrowing found."));
 
         record.markReturned(today);
+
+        item.returnItem();
+
+        borrowRepo.saveAll(borrowRecords);
+        itemManager.saveAll();
 
         List<WaitlistEntry> waitingUsers = waitlist.stream()
                 .filter(w -> w.getItemId().equals(item.getId()))
@@ -167,17 +201,22 @@ public class BorrowManager {
             Optional<User> target = UserManager.getInstance()
                     .findUserByEmail(entry.getUserEmail());
             target.ifPresent(value ->
-                    notifier.notify(value, "The item \"" + item.getTitle() + "\" is now available!",
-                            "Good news! The item \"" + item.getTitle() + "\" you requested is now available for borrowing."));
+                    notifier.notify(value,
+                            "The item \"" + item.getTitle() + "\" is now available!",
+                            "Good news! The item \"" + item.getTitle()
+                                    + "\" you requested is now available for borrowing."));
         }
 
         waitlist.removeIf(w -> w.getItemId().equals(item.getId()));
         waitlistRepo.saveAll(waitlist);
 
-        borrowRepo.saveAll(borrowRecords);
-        System.out.println(" Item returned successfully: " + item.getTitle());
+        System.out.println("✅ Item returned successfully: " + item.getTitle());
     }
 
+
+    // =====================================================================
+    // Fines
+    // =====================================================================
 
     /**
      * Applies overdue fines to all records that are past their due date.
@@ -185,9 +224,63 @@ public class BorrowManager {
      * @param date the date to check against
      */
     public void applyOverdueFines(LocalDate date) {
-        for (BorrowRecord r : borrowRecords)
-            if (r.isOverdue(date))
+        for (BorrowRecord r : borrowRecords) {
+            if (r.isOverdue(date)) {
                 r.applyFineToUser(date);
+            }
+        }
+        borrowRepo.saveAll(borrowRecords);
+    }
+
+    /**
+     * Handles paying fines for a given user.
+     * <p>
+     * This method:
+     * <ul>
+     *     <li>Ensures fines are up-to-date as of {@code date}</li>
+     *     <li>Distributes the payment across that user's borrow records (finePaid)</li>
+     *     <li>Subtracts the paid amount from the user's fine balance</li>
+     * </ul>
+     *
+     * @param user   the user who is paying
+     * @param amount the amount they are paying
+     * @param date   the date of payment (used to recalculate fines)
+     */
+    public void payFineForUser(User user, BigDecimal amount, LocalDate date) {
+        if (user == null)
+            throw new IllegalArgumentException("User cannot be null.");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("Amount must be positive.");
+        if (date == null)
+            throw new IllegalArgumentException("Date cannot be null.");
+
+        // Make sure all fines are calculated/applied first
+        applyOverdueFines(date);
+
+        BigDecimal remaining = amount;
+
+        // Distribute payment over the user's borrow records
+        for (BorrowRecord r : borrowRecords) {
+            if (!r.getUser().equals(user)) continue;
+
+            r.calculateFine(date); // ensure fine is up-to-date
+
+            BigDecimal recordRemaining = r.getRemainingFine();
+            if (recordRemaining.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+
+            BigDecimal payPart = remaining.min(recordRemaining);
+            r.setFinePaid(r.getFinePaid().add(payPart));
+            remaining = remaining.subtract(payPart);
+        }
+
+        // Deduct the amount from the user's fine balance
+        user.payFine(amount);
+
         borrowRepo.saveAll(borrowRecords);
     }
 

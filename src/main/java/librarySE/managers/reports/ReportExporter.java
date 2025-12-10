@@ -3,6 +3,7 @@ package librarySE.managers.reports;
 import librarySE.managers.User;
 import librarySE.core.MaterialType;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.*;
@@ -119,6 +120,11 @@ public class ReportExporter {
         try {
             Files.writeString(file, report,
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            try {
+                Desktop.getDesktop().open(file.toFile());
+            } catch (IOException e) {
+                System.err.println("Could not open the exported file automatically: " + e.getMessage());
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write report: " + file, e);
         }

@@ -1,0 +1,28 @@
+[
+  {
+    "user": {
+      "id": "96443e85-0fcd-493a-aa01-ac0bd7966833",
+      "username": "malak",
+      "role": "USER",
+      "passwordHash": "ba73f8a6340192e59c31bfa6f4c606fd6b065bed4024cf41d09e0754b9d29938",
+      "fineBalance": 0,
+      "email": "s12216855@stu.najah.edu"
+    },
+    "item": {
+      "type": "CD",
+      "title": "pic",
+      "artist": "z",
+      "totalCopies": 1,
+      "availableCopies": 0,
+      "id": "a13aa0b0-e755-4a7a-8b98-3a413fa4b80e",
+      "price": 20
+    },
+    "borrowPeriodDays": 7,
+    "borrowDateTime": "2025-12-10T00:00:00",
+    "dueDateTime": "2025-12-17T00:00:00",
+    "fine": 0,
+    "fineApplied": false,
+    "finePaid": 0,
+    "status": "BORROWED"
+  }
+]

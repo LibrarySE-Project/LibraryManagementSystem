@@ -51,18 +51,22 @@ public final class Config {
                 String defaults = """
                     fine.book.rate=10
                     fine.book.period=28
+
                     fine.cd.rate=20
                     fine.cd.period=7
+
                     fine.journal.rate=15
                     fine.journal.period=21
+
                     price.book.default=59.99
                     price.cd.default=39.99
                     price.journal.default=29.99
+
                     notifications.enabled=true
                     """;
                 Files.writeString(getConfigFile(), defaults);
             }
-           
+
             reload();
 
         } catch (IOException e) {

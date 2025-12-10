@@ -52,3 +52,63 @@
 [2025-12-10T14:21:13.497915200] [LoginManager.login] FAIL login attempt for admin=malak
 [2025-12-10T14:22:07.312987] [LoginManager.login] SUCCESS login attempt for admin=admin
 [2025-12-10T14:31:43.333688300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T18:36:37.207538300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T18:53:45.402228300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T19:07:47.659307100] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T19:13:52.034788800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T19:14:09.058577300] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T19:20:30.273264400] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T19:49:53.823892] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T19:49:58.933596800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T19:50:12.346592400] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T19:57:38.928378800] [LoginManager.login] FAIL login attempt for admin=admin
+[2025-12-10T19:57:44.945131900] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T20:17:34.011531800] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T20:19:30.579555400] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T20:19:41.027236900] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T20:20:48.930058800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T20:21:04.085685600] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T20:21:43.022251300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:03:27.429593300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:04:07.430674800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:04:28.643752800] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T21:05:04.686480900] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:05:18.439835300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:05:44.694236700] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:06:55.098934] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:07:04.444826200] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T21:08:03.755565400] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:08:10.019628800] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T21:08:18.807299900] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:08:29.646714800] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:17:36.498796600] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:18:05.495425800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:18:24.641193300] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T21:19:01.730713400] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:19:17.316540700] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:19:38.102203] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:19:54.436647600] [LoginManager.login] FAIL login attempt for admin=eman
+[2025-12-10T21:20:21.766197400] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T21:20:38.276535700] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:53:54.515869100] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T21:56:53.841197200] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:00:21.131523600] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:01:01.137176900] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:04:27.488943600] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:11:33.459882800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:11:46.924661100] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:19:22.484121] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:19:40.990691900] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:20:50.403832800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:21:12.966304] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T22:22:34.220758] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:22:46.306545300] [LoginManager.login] FAIL login attempt for admin=eman
+[2025-12-10T22:23:00.772986100] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:23:12.887006700] [LoginManager.login] FAIL login attempt for admin=malak
+[2025-12-10T22:23:51.707989300] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:34:45.651928500] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:35:37.269729800] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:35:51.545256800] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:36:02.781025900] [LoginManager.logout] Admin logged out: admin
+[2025-12-10T22:39:47.857317300] [LoginManager.login] SUCCESS login attempt for admin=admin
+[2025-12-10T22:41:22.514236] [LoginManager.logout] Admin logged out: admin

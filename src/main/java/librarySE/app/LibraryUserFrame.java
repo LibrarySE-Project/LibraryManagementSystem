@@ -1,12 +1,14 @@
 package librarySE.app;
 
 import librarySE.core.LibraryItem;
+import librarySE.managers.Admin;
 import librarySE.managers.BorrowManager;
 import librarySE.managers.BorrowRecord;
 import librarySE.managers.ItemManager;
-import  librarySE.managers.reports.*;
+import librarySE.managers.LoginManager;
 import librarySE.managers.User;
 import librarySE.managers.UserManager;
+import librarySE.managers.reports.ReportManager;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -15,23 +17,22 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * GUI for normal library users (no admin actions).
- * <p>
- * Features for the logged-in user:
- *  - Browse & search items.
- *  - Borrow available items.
- *  - View own active/previous borrows.
- *  - Return borrowed items.
- *  - Pay fines.
- */
-public class LibraryUserFrame  extends JFrame {
+public class LibraryUserFrame extends JFrame {
+
+    private static final long serialVersionUID = 1L;
+
+    private final LoginManager loginManager;
+    private final Admin admin;
 
     private final ItemManager itemManager;
     private final BorrowManager borrowManager;
     private final UserManager userManager;
-    private final ReportManager reportManager; // (ممكن تستغليه لاحقاً لتقارير شخصية)
+    private final ReportManager reportManager; 
     private final User loggedInUser;
+
+    // Header
+    private JLabel userStatusLabel;
+    private JButton logoutButton;
 
     // Browse & Borrow components
     private JTextField searchField;
@@ -39,7 +40,6 @@ public class LibraryUserFrame  extends JFrame {
     private DefaultTableModel itemsTableModel;
 
     // My Loans & Fines components
-    private JLabel userInfoLabel;
     private JLabel fineBalanceLabel;
     private JTable borrowTable;
     private DefaultTableModel borrowTableModel;
@@ -47,12 +47,17 @@ public class LibraryUserFrame  extends JFrame {
     private JTextField payAmountField;
     private JButton payFineButton;
 
-    public LibraryUserFrame(ItemManager itemManager,
+    public LibraryUserFrame(LoginManager loginManager,
+                            Admin admin,
+                            ItemManager itemManager,
                             BorrowManager borrowManager,
                             UserManager userManager,
                             ReportManager reportManager,
                             User loggedInUser) {
-        super("Library - User: " + loggedInUser.getUsername());
+        super("Library – User");
+
+        this.loginManager = loginManager;
+        this.admin = admin;
 
         this.itemManager = itemManager;
         this.borrowManager = borrowManager;
@@ -67,19 +72,84 @@ public class LibraryUserFrame  extends JFrame {
     }
 
     private void initUi() {
+        setLayout(new BorderLayout());
+
+        JPanel header = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                int w = getWidth();
+                int h = getHeight();
+                Color c1 = new Color(255, 182, 193);
+                Color c2 = new Color(135, 206, 235);
+                GradientPaint gp = new GradientPaint(0, 0, c1, w, h, c2);
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, w, h);
+                g2.dispose();
+            }
+        };
+        header.setLayout(new BorderLayout());
+        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+
+        JLabel title = new JLabel("Library Management System – User Area");
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
+        title.setForeground(new Color(60, 40, 70));
+
+        userStatusLabel = new JLabel(
+                "Logged in as: " + loggedInUser.getUsername() +
+                        "  (" + loggedInUser.getRole() + ")"
+        );
+        userStatusLabel.setForeground(new Color(60, 40, 70));
+
+        JPanel leftHeader = new JPanel(new GridLayout(2, 1));
+        leftHeader.setOpaque(false);
+        leftHeader.add(title);
+        leftHeader.add(userStatusLabel);
+
+        logoutButton = new JButton("Logout");
+        logoutButton.setFont(logoutButton.getFont().deriveFont(Font.BOLD));
+        logoutButton.setFocusPainted(false);
+        logoutButton.setBackground(new Color(255, 250, 250));
+        logoutButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(150, 130, 180)),
+                BorderFactory.createEmptyBorder(5, 20, 5, 20)
+        ));
+        logoutButton.addActionListener(e -> handleLogout());
+
+        header.add(leftHeader, BorderLayout.WEST);
+        header.add(logoutButton, BorderLayout.EAST);
+
+        add(header, BorderLayout.NORTH);
+
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Browse & Borrow", createBrowsePanel());
         tabs.addTab("My Loans & Fines", createMyLoansPanel());
 
-        setLayout(new BorderLayout());
         add(tabs, BorderLayout.CENTER);
     }
 
-    // ==================== Browse & Borrow ====================
+
+    private void handleLogout() {
+        loginManager.logout();
+        JOptionPane.showMessageDialog(this, "You have been logged out.");
+        dispose();
+
+        LibraryLoginFrame loginFrame = new LibraryLoginFrame(
+                loginManager,
+                admin,
+                itemManager,
+                borrowManager,
+                userManager,
+                reportManager
+        );
+        loginFrame.setVisible(true);
+    }
+
 
     private JPanel createBrowsePanel() {
         JPanel root = new JPanel(new BorderLayout());
-        root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
         top.add(new JLabel("Search:"));
@@ -98,7 +168,9 @@ public class LibraryUserFrame  extends JFrame {
             }
         };
         itemsTable = new JTable(itemsTableModel);
-        itemsTable.setRowHeight(22);
+        itemsTable.setRowHeight(24);
+        itemsTable.setFillsViewportHeight(true);
+        itemsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         JButton borrowButton = new JButton("Borrow selected");
 
@@ -177,21 +249,16 @@ public class LibraryUserFrame  extends JFrame {
         }
     }
 
-    // ==================== My Loans & Fines ====================
 
     private JPanel createMyLoansPanel() {
         JPanel root = new JPanel(new BorderLayout());
-        root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JPanel top = new JPanel(new BorderLayout());
-        userInfoLabel = new JLabel(
-                "Logged in as: " + loggedInUser.getUsername() + "  (" + loggedInUser.getRole() + ")");
-        userInfoLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
-        top.add(userInfoLabel, BorderLayout.NORTH);
-
         fineBalanceLabel = new JLabel();
         fineBalanceLabel.setFont(fineBalanceLabel.getFont().deriveFont(Font.BOLD));
-        top.add(fineBalanceLabel, BorderLayout.SOUTH);
+        fineBalanceLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+        top.add(fineBalanceLabel, BorderLayout.WEST);
 
         borrowTableModel = new DefaultTableModel(
                 new Object[]{"Item", "Borrow date", "Due date", "Status"}, 0) {
@@ -201,7 +268,9 @@ public class LibraryUserFrame  extends JFrame {
             }
         };
         borrowTable = new JTable(borrowTableModel);
-        borrowTable.setRowHeight(22);
+        borrowTable.setRowHeight(24);
+        borrowTable.setFillsViewportHeight(true);
+        borrowTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton refreshButton = new JButton("Refresh");
@@ -307,3 +376,4 @@ public class LibraryUserFrame  extends JFrame {
         }
     }
 }
+
