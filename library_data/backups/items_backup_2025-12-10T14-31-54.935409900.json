@@ -21,11 +21,11 @@
   {
     "type": "JOURNAL",
     "title": "soft",
-    "editor": "xy",
+    "editor": "z",
     "issueNumber": "2",
-    "totalCopies": 6,
-    "availableCopies": 6,
-    "id": "828e2c52-c230-4aec-8d4c-112da6337431",
-    "price": 30
+    "totalCopies": 9,
+    "availableCopies": 9,
+    "id": "76b74213-df4e-4be3-8525-2cc4c7eca05b",
+    "price": 25
   }
 ]

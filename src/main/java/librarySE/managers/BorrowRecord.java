@@ -64,7 +64,7 @@ public class BorrowRecord implements Serializable {
     private final LibraryItem item;
 
     /** Fine strategy defining rate and allowed borrow period. */
-    private final FineStrategy fineStrategy;
+    private  FineStrategy fineStrategy;
 
     /** Borrow period in days (defined by the fine strategy). */
     private final int borrowPeriodDays;

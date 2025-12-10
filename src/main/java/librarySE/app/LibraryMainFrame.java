@@ -286,11 +286,13 @@ public class LibraryMainFrame extends JFrame {
         searchField = new JTextField(25);
         searchButton = new JButton("Search");
         JButton showAllButton = new JButton("Show All");
+        JButton deleteButton = new JButton("Delete Selected");
 
         top.add(new JLabel("Keyword:"));
         top.add(searchField);
         top.add(searchButton);
         top.add(showAllButton);
+        top.add(deleteButton);
 
         itemsTableModel = new DefaultTableModel(
                 new Object[]{"Type", "Title", "Details"}, 0) {
@@ -329,6 +331,7 @@ public class LibraryMainFrame extends JFrame {
 
         searchButton.addActionListener(e -> refreshSearchResults());
         showAllButton.addActionListener(e -> loadAllItemsToSearchTable());
+        deleteButton.addActionListener(e -> handleDeleteSelectedItem());
 
         loadAllItemsToSearchTable();
         return panel;
@@ -390,6 +393,85 @@ public class LibraryMainFrame extends JFrame {
             }
         }
         return null;
+    }
+
+    /**
+     * Returns true if given item has any active (not returned) borrow records.
+     */
+    private boolean hasActiveLoansForItem(LibraryItem item) {
+        if (item == null) return false;
+
+        return borrowManager.getAllBorrowRecords().stream()
+                .anyMatch(r ->
+                        r.getItem() != null
+                                && r.getItem().getId().equals(item.getId())
+                                && !r.isReturned());
+    }
+
+    /**
+     * Deletes the currently selected item in the Search table (if allowed).
+     */
+    private void handleDeleteSelectedItem() {
+        int row = itemsTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Please select an item to delete.",
+                    "No selection",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String title = (String) itemsTableModel.getValueAt(row, 1);
+
+        LibraryItem item = itemManager.getAllItems().stream()
+                .filter(i -> i.getTitle().equals(title))
+                .findFirst()
+                .orElse(null);
+
+        if (item == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Item not found.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // prevent deletion if there are active loans
+        if (hasActiveLoansForItem(item)) {
+            JOptionPane.showMessageDialog(this,
+                    "Cannot delete this item because there are active borrow records.",
+                    "Delete not allowed",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int choice = JOptionPane.showConfirmDialog(
+                this,
+                "Delete item '" + item.getTitle() + "'?",
+                "Confirm deletion",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (choice != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            // requires ItemManager to have removeItem(...)
+            itemManager.deleteItem(item, admin);
+            itemManager.saveAll();
+
+            loadAllItemsToSearchTable();
+            loadAllItemsToBorrowTable();
+
+            JOptionPane.showMessageDialog(this,
+                    "Item deleted successfully.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    ex.getMessage(),
+                    "Delete Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void handleAddItem() {
@@ -710,7 +792,7 @@ public class LibraryMainFrame extends JFrame {
         panel.setBorder(BorderFactory.createTitledBorder("Available Items"));
 
         allItemsTableModel = new DefaultTableModel(
-                new Object[]{"Type", "Title", "Available?"}, 0) {
+                new Object[]{"Type", "Title", "Available / Total"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -804,10 +886,31 @@ public class LibraryMainFrame extends JFrame {
         List<LibraryItem> all = itemManager.getAllItems();
         allItemsTableModel.setRowCount(0);
         for (LibraryItem item : all) {
+
+            int available = 0;
+            int total = 1;
+
+            if (item instanceof Book b) {
+                available = b.getAvailableCopies();
+                total = b.getTotalCopies();
+            } else if (item instanceof CD cd) {
+                available = cd.getAvailableCopies();
+                total = cd.getTotalCopies();
+            } else if (item instanceof Journal j) {
+                available = j.getAvailableCopies();
+                total = j.getTotalCopies();
+            } else {
+                // fallback: old boolean availability
+                available = item.isAvailable() ? 1 : 0;
+                total = 1;
+            }
+
+            String availabilityText = available + " / " + total;
+
             allItemsTableModel.addRow(new Object[]{
                     item.getMaterialType(),
                     item.getTitle(),
-                    item.isAvailable() ? "Available" : "Not available"
+                    availabilityText
             });
         }
     }
