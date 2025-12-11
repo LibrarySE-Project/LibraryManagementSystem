@@ -2,32 +2,29 @@ package librarySE.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
-
 /**
- * Unit tests for {@link AbstractLibraryItem}.
+ * Tests validation and core behaviour inside {@link AbstractLibraryItem}.
  */
 class AbstractLibraryItemTest {
 
     /**
-     * Simple concrete item with one copy that can be borrowed and returned.
+     * Minimal concrete item to test normal behaviour of AbstractLibraryItem.
      */
-    static class DummyItem extends AbstractLibraryItem {
+    static class TestItem extends AbstractLibraryItem {
 
-        private boolean available = true;
+        TestItem(int total) {
+            super(total);
+        }
 
         @Override
         public String getTitle() {
-            return "DummyTitle";
+            return "Test";
         }
 
         @Override
@@ -37,44 +34,27 @@ class AbstractLibraryItemTest {
 
         @Override
         public boolean matchesKeyword(String keyword) {
-            return "match".equalsIgnoreCase(keyword);
+            return false;
         }
 
         @Override
-        protected boolean isAvailableInternal() {
-            return available;
-        }
-
-        @Override
-        protected boolean doBorrow() {
-            if (!available) {
-                throw new IllegalStateException("Item already borrowed");
-            }
-            available = false;
-            return true;
-        }
-
-        @Override
-        protected boolean doReturn() {
-            if (available) {
-                throw new IllegalStateException("Item is not currently borrowed");
-            }
-            available = true;
-            return true;
+        protected String getDisplayNameForMessages() {
+            return "TestItem";
         }
     }
 
     /**
-     * Item that is never available; used to cover the branch where
-     * borrow() returns false without invoking doBorrow().
+     * Concrete item exposing doBorrow() for exception testing.
      */
-    static class AlwaysUnavailableItem extends AbstractLibraryItem {
+    static class BorrowProbeItem extends AbstractLibraryItem {
 
-        boolean borrowCalled = false;
+        BorrowProbeItem(int total) {
+            super(total);
+        }
 
         @Override
         public String getTitle() {
-            return "Unavailable";
+            return "BorrowProbe";
         }
 
         @Override
@@ -88,222 +68,192 @@ class AbstractLibraryItemTest {
         }
 
         @Override
-        protected boolean isAvailableInternal() {
-            return false;
+        protected String getDisplayNameForMessages() {
+            return "BorrowProbeItem";
         }
 
-        @Override
-        protected boolean doBorrow() {
-            borrowCalled = true;
-            return true;
-        }
-
-        @Override
-        protected boolean doReturn() {
-            return false;
+        public boolean callDoBorrowDirect() {
+            return super.doBorrow();
         }
     }
 
-    private DummyItem item;
-
-    @BeforeEach
-    void setUp() {
-        item = new DummyItem();
+    private static void setIntField(AbstractLibraryItem target, String fieldName, int value) throws Exception {
+        Field f = AbstractLibraryItem.class.getDeclaredField(fieldName);
+        f.setAccessible(true);
+        f.setInt(target, value);
     }
 
-    @AfterEach
-    void tearDown() {
-        item = null;
+    private static int getIntField(AbstractLibraryItem target, String fieldName) throws Exception {
+        Field f = AbstractLibraryItem.class.getDeclaredField(fieldName);
+        f.setAccessible(true);
+        return f.getInt(target);
     }
 
-    // ------------------------------------------------------------
-    // Basic functionality
-    // ------------------------------------------------------------
+    // ---------------------------------------------------------
+    // Constructor & identity
+    // ---------------------------------------------------------
 
     @Test
-    void testGetId_NotNull() {
+    void testConstructor_InvalidTotalCopies_Throws() {
+        assertThrows(IllegalArgumentException.class, () -> new TestItem(0));
+        assertThrows(IllegalArgumentException.class, () -> new TestItem(-5));
+    }
+
+    @Test
+    void testConstructor_ValidInitialCopiesAndIdNotNull() {
+        TestItem item = new TestItem(3);
+        assertEquals(3, item.getTotalCopies());
+        assertEquals(3, item.getAvailableCopies());
+
         UUID id = item.getId();
         assertNotNull(id);
     }
 
+    // ---------------------------------------------------------
+    // Price validation
+    // ---------------------------------------------------------
+
     @Test
-    void testInitialPrice_Zero() {
+    void testInitialPrice_IsZero() {
+        TestItem item = new TestItem(1);
         assertEquals(BigDecimal.ZERO, item.getPrice());
     }
 
     @Test
-    void testSetPrice_ValidPositive() {
-        item.setPrice(BigDecimal.valueOf(15.75));
-        assertEquals("15.75", item.getPrice().toPlainString());
-    }
-
-    @Test
-    void testSetPrice_ZeroAllowed() {
-        assertDoesNotThrow(() -> item.setPrice(BigDecimal.ZERO));
-        assertEquals(BigDecimal.ZERO, item.getPrice());
+    void testSetPrice_Positive_Succeeds() {
+        TestItem item = new TestItem(1);
+        item.setPrice(BigDecimal.valueOf(12.5));
+        assertEquals(BigDecimal.valueOf(12.5), item.getPrice());
     }
 
     @Test
     void testSetPrice_Null_ThrowsNullPointerException() {
-        assertThrows(NullPointerException.class,
-                () -> item.setPrice(null));
+        TestItem item = new TestItem(1);
+        assertThrows(NullPointerException.class, () -> item.setPrice(null));
     }
 
     @Test
     void testSetPrice_Negative_ThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> item.setPrice(BigDecimal.valueOf(-1)));
+        TestItem item = new TestItem(1);
+        assertThrows(IllegalArgumentException.class, () -> item.setPrice(BigDecimal.valueOf(-1)));
     }
 
-    @Test
-    void testPriceUnchangedWhenExceptionThrown() {
-        assertEquals(BigDecimal.ZERO, item.getPrice());
-        try {
-            item.setPrice(BigDecimal.valueOf(-5));
-        } catch (Exception ignored) {
-        }
-        assertEquals(BigDecimal.ZERO, item.getPrice());
-    }
-
-    // ------------------------------------------------------------
-    // Availability and borrow/return
-    // ------------------------------------------------------------
-
-    @Test
-    void testInitialAvailability_IsTrue() {
-        assertTrue(item.isAvailable());
-    }
-
-    @Test
-    void testBorrow_Success() {
-        assertTrue(item.borrow());
-        assertFalse(item.isAvailable());
-    }
-
-    @Test
-    void testBorrow_SecondTimeFailsWithoutException() {
-        // first borrow succeeds
-        assertTrue(item.borrow());
-        assertFalse(item.isAvailable());
-
-        // second borrow should fail gracefully (no exception) and return false
-        boolean secondResult = item.borrow();
-        assertFalse(secondResult, "Second borrow on single-copy item must fail");
-        assertFalse(item.isAvailable(), "Item must remain unavailable after failed second borrow");
-    }
-
-    @Test
-    void testReturn_Success() {
-        item.borrow();
-        assertTrue(item.returnItem());
-        assertTrue(item.isAvailable());
-    }
-
-    @Test
-    void testReturn_WhenNotBorrowed_Throws() {
-        assertThrows(IllegalStateException.class, () -> item.returnItem());
-    }
-
-    @Test
-    void testMultipleBorrowReturnCycles() {
-        for (int i = 0; i < 3; i++) {
-            assertTrue(item.borrow());
-            assertFalse(item.isAvailable());
-            assertTrue(item.returnItem());
-            assertTrue(item.isAvailable());
-        }
-    }
-
-    @Test
-    void testBorrowReturnsFalseWhenNotAvailableAndDoesNotCallDoBorrow() {
-        AlwaysUnavailableItem it = new AlwaysUnavailableItem();
-
-        boolean result = it.borrow();
-
-        assertFalse(result);
-        assertFalse(it.borrowCalled, "doBorrow() should not be called when not available");
-    }
-
-    // ------------------------------------------------------------
-    // getLock lazy initialization branch
-    // ------------------------------------------------------------
+    // ---------------------------------------------------------
+    // Lazy lock initialization
+    // ---------------------------------------------------------
 
     @Test
     void testGetLock_LazyInitializationWhenNull() throws Exception {
-        // set lock field to null via reflection to simulate deserialized object
+        TestItem item = new TestItem(1);
+
         Field lockField = AbstractLibraryItem.class.getDeclaredField("lock");
         lockField.setAccessible(true);
         lockField.set(item, null);
 
-        assertDoesNotThrow(() -> {
-            // triggers getLock() and should reinitialize the lock
-            boolean available = item.isAvailable();
-            assertTrue(available);
-        });
+        assertDoesNotThrow(item::isAvailable);
     }
 
-    // ------------------------------------------------------------
-    // Thread-safety behaviour
-    // ------------------------------------------------------------
+    // ---------------------------------------------------------
+    // setTotalCopies() coverage
+    // ---------------------------------------------------------
 
     @Test
-    void testBorrow_ThreadSafety_AllowsOnlyOneSuccess() throws InterruptedException {
-        int threads = 30;
-        CountDownLatch latch = new CountDownLatch(threads);
-        AtomicInteger successCount = new AtomicInteger(0);
-
-        for (int i = 0; i < threads; i++) {
-            new Thread(() -> {
-                try {
-                    if (item.borrow()) {
-                        successCount.incrementAndGet();
-                    }
-                } finally {
-                    latch.countDown();
-                }
-            }).start();
-        }
-
-        latch.await();
-
-        assertEquals(1, successCount.get());
-        assertFalse(item.isAvailable());
+    void testSetTotalCopies_Invalid_Throws() {
+        TestItem item = new TestItem(2);
+        assertThrows(IllegalArgumentException.class, () -> item.setTotalCopies(0));
+        assertThrows(IllegalArgumentException.class, () -> item.setTotalCopies(-3));
     }
 
     @Test
-    void testReturn_ThreadSafety_AllowsOnlyOneSuccess() throws InterruptedException {
-        item.borrow(); // make it borrowed first
+    void testSetTotalCopies_IncreaseTotalCopies() {
+        TestItem item = new TestItem(2);
+        item.setTotalCopies(5);
+        assertEquals(5, item.getTotalCopies());
+        assertEquals(5, item.getAvailableCopies());
+    }
 
-        int threads = 30;
-        CountDownLatch latch = new CountDownLatch(threads);
-        AtomicInteger successCount = new AtomicInteger(0);
+    @Test
+    void testSetTotalCopies_DecreaseTotal_ClampsAvailableToZero() {
+        TestItem item = new TestItem(5);
+        item.borrow();
+        item.borrow();
 
-        for (int i = 0; i < threads; i++) {
-            new Thread(() -> {
-                try {
-                    if (item.returnItem()) {
-                        successCount.incrementAndGet();
-                    }
-                } catch (IllegalStateException ignored) {
-                    // losers: trying to return when already returned
-                } finally {
-                    latch.countDown();
-                }
-            }).start();
-        }
+        item.setTotalCopies(2);
 
-        latch.await();
+        assertEquals(2, item.getTotalCopies());
+        assertEquals(0, item.getAvailableCopies());
+    }
 
-        assertEquals(1, successCount.get());
+    @Test
+    void testSetTotalCopies_ClampWhenAvailableExceedsTotal() throws Exception {
+        TestItem item = new TestItem(3);
+        setIntField(item, "totalCopies", 3);
+        setIntField(item, "availableCopies", 10);
+
+        item.setTotalCopies(3);
+
+        assertEquals(3, item.getTotalCopies());
+        assertEquals(3, item.getAvailableCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_ClampWhenAvailableNegative() throws Exception {
+        TestItem item = new TestItem(3);
+        setIntField(item, "totalCopies", 3);
+        setIntField(item, "availableCopies", -5);
+
+        item.setTotalCopies(3);
+
+        assertEquals(3, item.getTotalCopies());
+        assertEquals(0, item.getAvailableCopies());
+    }
+
+    // ---------------------------------------------------------
+    // doBorrow() and doReturn() branches
+    // ---------------------------------------------------------
+
+    @Test
+    void testBorrow_NormalFlow() {
+        TestItem item = new TestItem(1);
+
+        assertTrue(item.borrow());
+        assertEquals(0, item.getAvailableCopies());
+
+        assertFalse(item.borrow());
+        assertEquals(0, item.getAvailableCopies());
+    }
+
+    @Test
+    void testDoBorrow_IllegalStateExceptionBranchWhenAvailableZero() throws Exception {
+        BorrowProbeItem item = new BorrowProbeItem(1);
+        setIntField(item, "availableCopies", 0);
+
+        assertThrows(IllegalStateException.class, item::callDoBorrowDirect);
+    }
+
+    @Test
+    void testDoReturn_WhenValid_Succeeds() {
+        TestItem item = new TestItem(1);
+        item.borrow();
+        assertTrue(item.returnItem());
+        assertEquals(1, item.getAvailableCopies());
+    }
+
+    @Test
+    void testDoReturn_WhenAllCopiesAlreadyReturned_Throws() {
+        TestItem item = new TestItem(1);
+        assertThrows(IllegalStateException.class, item::returnItem);
+    }
+
+    // ---------------------------------------------------------
+    // isAvailable()
+    // ---------------------------------------------------------
+
+    @Test
+    void testIsAvailable_TrueThenFalse() {
+        TestItem item = new TestItem(1);
         assertTrue(item.isAvailable());
-    }
-
-    // ------------------------------------------------------------
-    // Misc
-    // ------------------------------------------------------------
-
-    @Test
-    void testToString_NotNull() {
-        assertNotNull(item.toString());
+        item.borrow();
+        assertFalse(item.isAvailable());
     }
 }

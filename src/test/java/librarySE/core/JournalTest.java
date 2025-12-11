@@ -186,8 +186,9 @@ class JournalTest {
 
     @Test
     void testSetTotalCopies_ClampsWhenAvailableGreaterThanTotal() throws Exception {
-        Field totalField = Journal.class.getDeclaredField("totalCopies");
-        Field availableField = Journal.class.getDeclaredField("availableCopies");
+        // NOTE: fields now live in AbstractLibraryItem, not Journal
+        Field totalField = AbstractLibraryItem.class.getDeclaredField("totalCopies");
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         totalField.setAccessible(true);
         availableField.setAccessible(true);
 
@@ -202,8 +203,9 @@ class JournalTest {
 
     @Test
     void testSetTotalCopies_ClampsNegativeAvailableToZero() throws Exception {
-        Field totalField = Journal.class.getDeclaredField("totalCopies");
-        Field availableField = Journal.class.getDeclaredField("availableCopies");
+        // NOTE: fields now live in AbstractLibraryItem, not Journal
+        Field totalField = AbstractLibraryItem.class.getDeclaredField("totalCopies");
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         totalField.setAccessible(true);
         availableField.setAccessible(true);
 
@@ -274,8 +276,8 @@ class JournalTest {
 
     @Test
     void testDoBorrow_ThrowsWhenNoCopies() throws Exception {
-        // force internal state to 0 available copies
-        Field availableField = Journal.class.getDeclaredField("availableCopies");
+        // NOTE: availableCopies now in AbstractLibraryItem
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         availableField.setAccessible(true);
         availableField.setInt(journal, 0);
 

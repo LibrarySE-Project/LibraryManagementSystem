@@ -60,51 +60,39 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Unique identifier for this library item instance.
-     */
-    private final UUID id;
+    // ---------------- Identity & price ----------------
 
-    /**
-     * Monetary value or replacement cost of this item.
-     */
+    private final UUID id;
     private BigDecimal price = BigDecimal.ZERO;
 
     /**
      * Lock used to protect borrow/return/availability operations.
-     * <p>
-     * Marked as {@code transient} so that JSON serializers such as Gson
-     * do not attempt to serialize the internal fields of {@link ReentrantLock},
-     * which would otherwise cause reflection-access errors.
-     * </p>
-     *
-     * <p>
-     * Because constructors and field initializers are not invoked during
-     * Gson deserialization, this field may end up {@code null} after
-     * loading from JSON. To handle that safely, all access goes through
-     * {@link #getLock()}, which lazily reinitializes the lock if needed.
-     * </p>
+     * Marked as {@code transient} so it is not serialized.
      */
     private transient ReentrantLock lock;
 
+    // ---------------- Copy tracking ----------------
+
+    private int totalCopies;
+    private int availableCopies;
+
     /**
-     * Constructs a new {@code AbstractLibraryItem} with a generated UUID
-     * and default price of {@code 0.00}.
+     * Constructs a new {@code AbstractLibraryItem} with the given total copies.
+     *
+     * @param totalCopies initial total copies (> 0)
      */
-    protected AbstractLibraryItem() {
+    protected AbstractLibraryItem(int totalCopies) {
+        if (totalCopies <= 0) {
+            throw new IllegalArgumentException("Total copies must be > 0");
+        }
         this.id = UUID.randomUUID();
         this.lock = new ReentrantLock();
+        this.totalCopies = totalCopies;
+        this.availableCopies = totalCopies;
     }
 
     /**
      * Lazily initializes and returns the internal {@link ReentrantLock}.
-     * <p>
-     * This method is necessary because JSON deserialization (e.g. via Gson)
-     * does not invoke constructors or field initializers, so transient fields
-     * like {@code lock} may be {@code null} when an object is loaded from disk.
-     * </p>
-     *
-     * @return a non-null {@link ReentrantLock} instance
      */
     protected ReentrantLock getLock() {
         if (lock == null) {
@@ -113,36 +101,18 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
         return lock;
     }
 
-    /**
-     * Returns the unique identifier of this item.
-     *
-     * @return non-null {@link UUID}
-     */
+    // --------------- Identity & price API ----------------
+
     @Override
     public final UUID getId() {
         return id;
     }
 
-    /**
-     * Returns the current price of this item.
-     *
-     * @return non-null {@link BigDecimal} representing the price
-     */
     @Override
     public final BigDecimal getPrice() {
         return price;
     }
 
-    /**
-     * Updates the price of this item after basic validation.
-     * <p>
-     * Subclasses typically call this method from their own "smart price"
-     * initializers (e.g., reading defaults from configuration).
-     * </p>
-     *
-     * @param price new price; must not be {@code null} and must be &gt;= 0
-     * @throws IllegalArgumentException if {@code price} is null or negative
-     */
     @Override
     public final void setPrice(BigDecimal price) {
         Objects.requireNonNull(price, "Price must not be null");
@@ -152,45 +122,51 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
         this.price = price;
     }
 
+    // --------------- Copy counters API ----------------
+
+    /** Total physical copies of this item. */
+    public final synchronized int getTotalCopies() {
+        return totalCopies;
+    }
+
+    /** Number of currently available copies. */
+    public final synchronized int getAvailableCopies() {
+        return availableCopies;
+    }
+
     /**
-     * Checks whether this item is currently available for borrowing.
-     * <p>
-     * The operation is performed under the internal lock to ensure a
-     * consistent view when other threads may be borrowing or returning
-     * copies at the same time.
-     * </p>
-     *
-     * @return {@code true} if available; {@code false} otherwise
+     * Changes the total number of physical copies and adjusts the available
+     * count accordingly, keeping it in the range [0, total].
      */
+    public final synchronized void setTotalCopies(int newTotal) {
+        if (newTotal <= 0) {
+            throw new IllegalArgumentException("Total copies must be > 0");
+        }
+        int delta = newTotal - this.totalCopies;
+        this.totalCopies = newTotal;
+        this.availableCopies += delta;
+
+        if (this.availableCopies > this.totalCopies) {
+            this.availableCopies = this.totalCopies;
+        }
+        if (this.availableCopies < 0) {
+            this.availableCopies = 0;
+        }
+    }
+
+    // --------------- Thread-safe template methods ----------------
+
     @Override
     public final boolean isAvailable() {
         ReentrantLock l = getLock();
         l.lock();
         try {
-            return isAvailableInternal();
+            return availableCopies > 0;
         } finally {
             l.unlock();
         }
     }
 
-    /**
-     * Attempts to borrow this item in a thread-safe manner.
-     * <p>
-     * This method:
-     * <ol>
-     *   <li>Acquires the internal lock.</li>
-     *   <li>Checks availability via {@link #isAvailableInternal()}.</li>
-     *   <li>If unavailable, returns {@code false} without calling {@link #doBorrow()}.</li>
-     *   <li>If available, calls {@link #doBorrow()} to let the subclass
-     *       update its internal copy counters.</li>
-     * </ol>
-     * </p>
-     *
-     * @return {@code true} if a copy was successfully borrowed;
-     *         {@code false} if no copies were available
-     * @throws IllegalStateException if subclasses choose to signal
-     *         invalid states via exceptions
-     */
     @Override
     public final boolean borrow() {
         ReentrantLock l = getLock();
@@ -205,17 +181,6 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
         }
     }
 
-    /**
-     * Returns a previously borrowed copy of this item in a thread-safe manner.
-     * <p>
-     * Delegates to {@link #doReturn()} to perform subclass-specific logic
-     * (e.g., incrementing available copy counts).
-     * </p>
-     *
-     * @return {@code true} if the return was successful
-     * @throws IllegalStateException if the item cannot be returned in its
-     *         current state (e.g., all copies already present)
-     */
     @Override
     public final boolean returnItem() {
         ReentrantLock l = getLock();
@@ -227,39 +192,38 @@ public abstract class AbstractLibraryItem implements LibraryItem, Serializable {
         }
     }
 
-    /**
-     * Internal availability check used by {@link #isAvailable()} and {@link #borrow()}.
-     * <p>
-     * Subclasses should implement this method based on their internal
-     * copy-tracking model (for example, {@code availableCopies > 0}).
-     * </p>
-     *
-     * @return {@code true} if at least one copy is available
-     */
-    protected abstract boolean isAvailableInternal();
+    // --------------- Internal copy logic ----------------
+
+    /** Used internally by {@link #isAvailable()} and {@link #borrow()}. */
+    protected boolean isAvailableInternal() {
+        return availableCopies > 0;
+    }
+
+    /** Common borrow implementation for all copy-tracked items. */
+    protected boolean doBorrow() {
+        if (availableCopies <= 0) {
+            throw new IllegalStateException(
+                    "No available copies of \"" + getDisplayNameForMessages() + "\" to borrow."
+            );
+        }
+        availableCopies--;
+        return true;
+    }
+
+    /** Common return implementation for all copy-tracked items. */
+    protected boolean doReturn() {
+        if (availableCopies >= totalCopies) {
+            throw new IllegalStateException(
+                    "All copies of \"" + getDisplayNameForMessages() + "\" are already in the library."
+            );
+        }
+        availableCopies++;
+        return true;
+    }
 
     /**
-     * Performs the actual "borrow" mutation at the subclass level.
-     * <p>
-     * This method is called only when {@link #isAvailableInternal()} has
-     * already returned {@code true} under the internal lock.
-     * Implementations typically decrement an {@code availableCopies} field
-     * and may throw {@link IllegalStateException} if invariants are violated.
-     * </p>
-     *
-     * @return {@code true} if the borrow mutation succeeded
+     * Human-friendly label used in error messages
+     * (e.g. "Clean Code", or "AI Journal [Vol. 15]").
      */
-    protected abstract boolean doBorrow();
-
-    /**
-     * Performs the actual "return" mutation at the subclass level.
-     * <p>
-     * This method is invoked under the internal lock by {@link #returnItem()}.
-     * Implementations typically increment an {@code availableCopies} field
-     * while enforcing that it does not exceed {@code totalCopies}.
-     * </p>
-     *
-     * @return {@code true} if the return mutation succeeded
-     */
-    protected abstract boolean doReturn();
+    protected abstract String getDisplayNameForMessages();
 }

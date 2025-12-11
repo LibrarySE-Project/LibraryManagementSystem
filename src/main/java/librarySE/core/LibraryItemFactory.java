@@ -15,20 +15,14 @@ import java.math.BigDecimal;
  *
  * <p>Price parsing returns {@code null} for empty text, allowing
  * item classes to apply their configured default price.</p>
- *  @author Malak
+ *
+ * @author Malak
  */
 public final class LibraryItemFactory {
 
     /** Prevents instantiation. */
     private LibraryItemFactory() {}
 
-    /**
-     * Parses a price text into {@link BigDecimal}.
-     *
-     * @param priceText raw price input; may be {@code null} or blank
-     * @return parsed price, or {@code null} if no price was provided
-     * @throws IllegalArgumentException if non-blank text is not numeric or negative
-     */
     private static BigDecimal parsePrice(String priceText) {
         if (priceText == null || priceText.trim().isEmpty()) {
             return null;
@@ -40,28 +34,12 @@ public final class LibraryItemFactory {
         return price;
     }
 
-
-    /**
-     * Creates a {@link Book} using default price and single copy.
-     *
-     * @param isbn   book ISBN
-     * @param title  book title
-     * @param author book author
-     * @return created {@link Book}
-     */
+    /** Creates a Book with default price and a single copy. */
     public static LibraryItem createBook(String isbn, String title, String author) {
         return createBook(isbn, title, author, null, 1);
     }
 
-    /**
-     * Creates a {@link Book} using explicit price and single copy.
-     *
-     * @param isbn      book ISBN
-     * @param title     book title
-     * @param author    book author
-     * @param priceText text representation of price
-     * @return created {@link Book}
-     */
+    /** Creates a Book with explicit price and a single copy. */
     public static LibraryItem createBook(String isbn,
                                          String title,
                                          String author,
@@ -69,15 +47,7 @@ public final class LibraryItemFactory {
         return createBook(isbn, title, author, priceText, 1);
     }
 
-    /**
-     * Creates a {@link Book} with default price and multiple copies.
-     *
-     * @param isbn        book ISBN
-     * @param title       book title
-     * @param author      book author
-     * @param totalCopies number of physical copies
-     * @return created {@link Book}
-     */
+    /** Creates a Book with default price and multiple copies. */
     public static LibraryItem createBook(String isbn,
                                          String title,
                                          String author,
@@ -85,16 +55,7 @@ public final class LibraryItemFactory {
         return createBook(isbn, title, author, null, totalCopies);
     }
 
-    /**
-     * Creates a {@link Book} with explicit price and multiple copies.
-     *
-     * @param isbn        book ISBN
-     * @param title       book title
-     * @param author      book author
-     * @param priceText   text price; {@code null} means use default
-     * @param totalCopies number of physical copies
-     * @return created {@link Book}
-     */
+    /** Creates a Book with explicit price and multiple copies. */
     public static LibraryItem createBook(String isbn,
                                          String title,
                                          String author,
@@ -104,55 +65,26 @@ public final class LibraryItemFactory {
         return new Book(isbn, title, author, price, totalCopies);
     }
 
-
-    /**
-     * Creates a {@link CD} using default price and single copy.
-     *
-     * @param title  CD title
-     * @param artist CD artist
-     * @return created {@link CD}
-     */
+    /** Creates a CD with default price and a single copy. */
     public static LibraryItem createCd(String title, String artist) {
         return createCd(title, artist, null, 1);
     }
 
-    /**
-     * Creates a {@link CD} with explicit price and single copy.
-     *
-     * @param title     CD title
-     * @param artist    CD artist
-     * @param priceText text price; {@code null} means default price
-     * @return created {@link CD}
-     */
+    /** Creates a CD with explicit price and a single copy. */
     public static LibraryItem createCd(String title,
                                        String artist,
                                        String priceText) {
         return createCd(title, artist, priceText, 1);
     }
 
-    /**
-     * Creates a {@link CD} with default price and multiple copies.
-     *
-     * @param title       CD title
-     * @param artist      CD artist
-     * @param totalCopies number of physical copies
-     * @return created {@link CD}
-     */
+    /** Creates a CD with default price and multiple copies. */
     public static LibraryItem createCd(String title,
                                        String artist,
                                        int totalCopies) {
         return createCd(title, artist, null, totalCopies);
     }
 
-    /**
-     * Creates a {@link CD} with explicit price and multiple copies.
-     *
-     * @param title       CD title
-     * @param artist      CD artist
-     * @param priceText   text price; {@code null} means default price
-     * @param totalCopies number of physical copies
-     * @return created {@link CD}
-     */
+    /** Creates a CD with explicit price and multiple copies. */
     public static LibraryItem createCd(String title,
                                        String artist,
                                        String priceText,
@@ -161,31 +93,14 @@ public final class LibraryItemFactory {
         return new CD(title, artist, price, totalCopies);
     }
 
-
-
-    /**
-     * Creates a {@link Journal} with default price and single copy.
-     *
-     * @param title  journal title
-     * @param editor journal editor
-     * @param issue  journal issue number
-     * @return created {@link Journal}
-     */
+    /** Creates a Journal with default price and a single copy. */
     public static LibraryItem createJournal(String title,
                                             String editor,
                                             String issue) {
         return createJournal(title, editor, issue, null, 1);
     }
 
-    /**
-     * Creates a {@link Journal} with explicit price and single copy.
-     *
-     * @param title     journal title
-     * @param editor    journal editor
-     * @param issue     issue number
-     * @param priceText text price
-     * @return created {@link Journal}
-     */
+    /** Creates a Journal with explicit price and a single copy. */
     public static LibraryItem createJournal(String title,
                                             String editor,
                                             String issue,
@@ -193,15 +108,7 @@ public final class LibraryItemFactory {
         return createJournal(title, editor, issue, priceText, 1);
     }
 
-    /**
-     * Creates a {@link Journal} with default price and multiple copies.
-     *
-     * @param title       journal title
-     * @param editor      editor name
-     * @param issue       issue number
-     * @param totalCopies number of copies
-     * @return created {@link Journal}
-     */
+    /** Creates a Journal with default price and multiple copies. */
     public static LibraryItem createJournal(String title,
                                             String editor,
                                             String issue,
@@ -209,16 +116,7 @@ public final class LibraryItemFactory {
         return createJournal(title, editor, issue, null, totalCopies);
     }
 
-    /**
-     * Creates a {@link Journal} with explicit price and multiple copies.
-     *
-     * @param title       journal title
-     * @param editor      editor name
-     * @param issue       issue number
-     * @param priceText   text price; {@code null} uses default
-     * @param totalCopies number of copies
-     * @return created {@link Journal}
-     */
+    /** Creates a Journal with explicit price and multiple copies. */
     public static LibraryItem createJournal(String title,
                                             String editor,
                                             String issue,
@@ -228,10 +126,6 @@ public final class LibraryItemFactory {
         return new Journal(title, editor, issue, price, totalCopies);
     }
 
-    // ============================================================
-    // LEGACY VARARGS
-    // ============================================================
-
     /**
      * Legacy varargs creator for backward compatibility.
      * Always creates exactly one copy.
@@ -239,6 +133,7 @@ public final class LibraryItemFactory {
      * @param type item type
      * @param args parameters required by the specific type
      * @return created {@link LibraryItem}
+     * @deprecated This method is kept only for backward compatibility and will be removed in a future version.
      */
     @Deprecated
     public static LibraryItem create(MaterialType type, String... args) {
