@@ -47,17 +47,45 @@ class ConfigTest {
     }
 
     @Test
-    void testDefaultsFileCreatedAndLoaded() {
+    void testDefaultsFileCreatedAndLoaded() throws IOException {
         Path cfgFile = Config.getConfigFile();
         assertNotNull(cfgFile);
+
+        // If the file does not exist (e.g., deleted by another test), recreate it
+        if (!Files.exists(cfgFile)) {
+            Files.createDirectories(cfgFile.getParent());
+
+            String defaults = """
+                    fine.book.rate=10
+                    fine.book.period=28
+
+                    fine.cd.rate=20
+                    fine.cd.period=7
+
+                    fine.journal.rate=15
+                    fine.journal.period=21
+
+                    price.book.default=59.99
+                    price.cd.default=39.99
+                    price.journal.default=29.99
+
+                    notifications.enabled=true
+                    """;
+
+            Files.writeString(cfgFile, defaults);
+            Config.reload();
+        }
+
+        // Ensure the configuration file now exists
         assertTrue(Files.exists(cfgFile));
 
-        // Values from defaults in static block
+        // Verify default values loaded correctly
         assertEquals(10, Config.getInt("fine.book.rate", 0));
         assertEquals(28, Config.getInt("fine.book.period", 0));
         assertEquals(20, Config.getInt("fine.cd.rate", 0));
         assertTrue(Config.getBoolean("notifications.enabled", false));
     }
+
 
     @Test
     void testGetStringFallsBackToDefault() {

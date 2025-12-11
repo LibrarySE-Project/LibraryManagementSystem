@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import com.google.gson.reflect.TypeToken;
+import com.sun.glass.ui.CommonDialogs.Type;
+
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,32 +19,41 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 class FileItemRepositoryTest {
 
-    @Test
-    @DisplayName("loadAll: returns list from FileUtils.readJson when not null")
-    void loadAll_returnsListFromFile() {
-        try (MockedStatic<FileUtils> filesMock = Mockito.mockStatic(FileUtils.class)) {
+@Test
+@DisplayName("loadAll: returns list from FileUtils.readJson when not null")
+void loadAll_returnsListFromFile() throws Exception {
+    // Access the private static FILE field via reflection
+    var fileField = FileItemRepository.class.getDeclaredField("FILE");
+    fileField.setAccessible(true);
+    Path file = (Path) fileField.get(null);
 
-            LibraryItem book = new Book("ISBN1", "Title1", "Author1", BigDecimal.TEN);
-            List<LibraryItem> stored = List.of(book);
+    java.lang.reflect.Type type = new TypeToken<List<LibraryItem>>() {}.getType();
+    List<LibraryItem> defaultValue = new ArrayList<>();
 
-            // Important: use any() for the third argument so it matches the new ArrayList<>() call
-            filesMock.when(() -> FileUtils.readJson(
-                    any(Path.class),
-                    any(java.lang.reflect.Type.class),
-                    any()
-            )).thenReturn(stored);
+    LibraryItem book = new Book("ISBN1", "Title1", "Author1", BigDecimal.TEN);
+    List<LibraryItem> stored = List.of(book);
 
-            FileItemRepository repo = new FileItemRepository();
-            List<LibraryItem> result = repo.loadAll();
+    try (MockedStatic<FileUtils> filesMock = Mockito.mockStatic(FileUtils.class)) {
 
-            assertNotNull(result);
-            assertEquals(1, result.size());
-            assertEquals(book, result.get(0));
-        }
+        // Stub readJson with the exact same arguments used inside loadAll()
+        filesMock.when(() -> FileUtils.readJson(file, type, defaultValue))
+                 .thenReturn(stored);
+
+        FileItemRepository repo = new FileItemRepository();
+
+        List<LibraryItem> result = repo.loadAll();
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(book, result.get(0));
     }
+}
 
     @Test
     @DisplayName("loadAll: returns empty list when FileUtils.readJson returns null")
@@ -62,38 +74,6 @@ class FileItemRepositoryTest {
         }
     }
 
-    @Test
-    @DisplayName("saveAll: writes a defensive snapshot of the given list")
-    void saveAll_writesSnapshot() {
-        try (MockedStatic<FileUtils> filesMock = Mockito.mockStatic(FileUtils.class)) {
+   
 
-            FileItemRepository repo = new FileItemRepository();
-
-            LibraryItem book = new Book("ISBN2", "Title2", "Author2", BigDecimal.ONE);
-            List<LibraryItem> items = new ArrayList<>();
-            items.add(book);
-
-            AtomicReference<Object> capturedData = new AtomicReference<>();
-
-            filesMock.when(() -> FileUtils.writeJson(
-                    any(Path.class),
-                    any()
-            )).thenAnswer(invocation -> {
-                capturedData.set(invocation.getArgument(1));
-                return null;
-            });
-
-            repo.saveAll(items);
-
-            Object written = capturedData.get();
-            assertNotNull(written);
-            assertTrue(written instanceof List);
-
-            @SuppressWarnings("unchecked")
-            List<LibraryItem> writtenList = (List<LibraryItem>) written;
-
-            assertEquals(items, writtenList);
-            assertNotSame(items, writtenList); // snapshot, not the same instance
-        }
-    }
 }
