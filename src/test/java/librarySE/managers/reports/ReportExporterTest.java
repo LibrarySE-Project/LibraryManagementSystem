@@ -9,7 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.*;
@@ -77,7 +79,7 @@ class ReportExporterTest {
     }
 
     @Test
-    @DisplayName("exportFinesReportToCsv: creates directory and report file")
+    @DisplayName("exportFinesReportToCsv: creates directory and report file without opening Excel")
     void exportFinesReportToCsv_createsFile() throws IOException {
         LocalDate d = LocalDate.of(2025, 1, 1);
 
@@ -94,7 +96,12 @@ class ReportExporterTest {
             }
         }
 
-        exporter.exportFinesReportToCsv(d);
+        try (MockedStatic<Desktop> desktopMock = mockStatic(Desktop.class)) {
+            Desktop mockDesktop = Mockito.mock(Desktop.class);
+            desktopMock.when(Desktop::getDesktop).thenReturn(mockDesktop);
+
+            exporter.exportFinesReportToCsv(d);
+        }
 
         assertTrue(Files.exists(reportsDir));
         assertTrue(Files.exists(file));
@@ -159,6 +166,7 @@ class ReportExporterTest {
             assertTrue(ex.getMessage().contains("Failed to write report"));
         }
     }
+
     @Test
     @DisplayName("exportFinesReportToCsv: should create directories when they do not exist")
     void exportFinesReportToCsv_directoryCreatedSuccessfully() {
@@ -169,14 +177,9 @@ class ReportExporterTest {
 
         try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
 
-            // Directory does not exist → createDirectories() should be called
             filesMock.when(() -> Files.exists(reportsDir)).thenReturn(false);
-
-            // Simulate successful directory creation (no exception)
             filesMock.when(() -> Files.createDirectories(reportsDir))
                      .thenReturn(reportsDir);
-
-            // Simulate successful write (no exception)
             filesMock.when(() ->
                     Files.writeString(
                             eq(file),
@@ -185,10 +188,39 @@ class ReportExporterTest {
                             any(StandardOpenOption.class))
             ).thenReturn(file);
 
-            // No exception should be thrown from exportFinesReportToCsv
-            assertDoesNotThrow(() -> exporter.exportFinesReportToCsv(d));
+            try (MockedStatic<Desktop> desktopMock = mockStatic(Desktop.class)) {
+                Desktop mockDesktop = Mockito.mock(Desktop.class);
+                desktopMock.when(Desktop::getDesktop).thenReturn(mockDesktop);
+
+                assertDoesNotThrow(() -> exporter.exportFinesReportToCsv(d));
+            }
         }
     }
+
+    @Test
+    @DisplayName("exportFinesReportToCsv: Desktop open failure should not throw")
+    void exportFinesReportToCsv_openDesktopFails_noException() throws IOException {
+        LocalDate d = LocalDate.of(2025, 5, 1);
+
+        Path reportsDir = Paths.get("library_data", "reports");
+        if (!Files.exists(reportsDir)) {
+            Files.createDirectories(reportsDir);
+        }
+
+        Path file = reportsDir.resolve("fines_" + d + ".csv");
+        if (Files.exists(file)) {
+            Files.delete(file);
+        }
+
+        try (MockedStatic<Desktop> desktopMock = mockStatic(Desktop.class)) {
+            Desktop mockDesktop = Mockito.mock(Desktop.class);
+            desktopMock.when(Desktop::getDesktop).thenReturn(mockDesktop);
+            Mockito.doThrow(new IOException("Simulated open failure"))
+                   .when(mockDesktop).open(any());
+
+            assertDoesNotThrow(() -> exporter.exportFinesReportToCsv(d));
+        }
+
+        assertTrue(Files.exists(file));
+    }
 }
-
-

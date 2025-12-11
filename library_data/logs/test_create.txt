@@ -1,3 +1,0 @@
-[2025-12-01T23:29:24.087523700] [LoggerUtilsTest.testLog_createsNewFileAndWritesContent] Hello
-[2025-12-05T16:04:38.039359500] [LoggerUtilsTest.testLog_createsNewFileAndWritesContent] Hello
-[2025-12-05T16:13:24.748241200] [LoggerUtilsTest.testLog_createsNewFileAndWritesContent] Hello

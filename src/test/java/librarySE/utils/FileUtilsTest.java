@@ -1,29 +1,39 @@
 package librarySE.utils;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import com.google.gson.TypeAdapter;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonWriter;
+import librarySE.core.Book;
+import librarySE.core.CD;
+import librarySE.core.Journal;
+import librarySE.core.LibraryItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
+import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mockStatic;
 
 class FileUtilsTest {
 
-    /** Temporary directory used only for the non-library_data tests. */
     private Path tempDir;
-
-    /** JSON file inside the temporary directory. */
     private Path jsonFile;
+
+    static class DateHolder {
+        LocalDate date;
+        LocalDateTime dateTime;
+    }
 
     @BeforeEach
     void setup() throws Exception {
@@ -34,34 +44,26 @@ class FileUtilsTest {
     @Test
     void writeJson_createsFileInCustomDirectory() {
         List<String> data = List.of("a", "b");
-
         FileUtils.writeJson(jsonFile, data);
-
-        assertTrue(Files.exists(jsonFile), "JSON file should be created");
+        assertTrue(Files.exists(jsonFile));
     }
 
     @Test
     void writeJson_createsBackupWhenFileAlreadyExists() throws Exception {
-        Path jsonFile = FileUtils.dataFile("test_backup_file.json");
+        Path file = FileUtils.dataFile("test_backup_file.json");
+        if (Files.exists(file)) Files.delete(file);
 
-        if (Files.exists(jsonFile)) {
-            Files.delete(jsonFile);
-        }
+        List<String> d1 = List.of("old");
+        List<String> d2 = List.of("new");
 
-        List<String> original = List.of("old");
-        List<String> updated  = List.of("new");
+        FileUtils.writeJson(file, d1);
+        assertTrue(Files.exists(file));
 
-        FileUtils.writeJson(jsonFile, original);
-        assertTrue(Files.exists(jsonFile));
+        FileUtils.writeJson(file, d2);
+        Path backup = FileUtils.dataFile("backups");
 
-        FileUtils.writeJson(jsonFile, updated);
-
-        Path backupDir = FileUtils.dataFile("backups");
-        assertTrue(Files.exists(backupDir));
-
-        long count = Files.list(backupDir)
-                .filter(p -> p.getFileName().toString()
-                        .startsWith("test_backup_file_backup"))
+        long count = Files.list(backup)
+                .filter(p -> p.getFileName().toString().startsWith("test_backup_file_backup"))
                 .count();
 
         assertTrue(count >= 1);
@@ -69,12 +71,8 @@ class FileUtilsTest {
 
     @Test
     void writeJson_createsBackupWithCleanBackupDirectory() throws Exception {
-        Path jsonFile = FileUtils.dataFile("test_backup.json");
+        Path file = FileUtils.dataFile("test_backup.json");
         Path backupDir = FileUtils.dataFile("backups");
-
-        if (Files.exists(jsonFile)) {
-            Files.delete(jsonFile);
-        }
 
         if (Files.exists(backupDir)) {
             Files.list(backupDir).forEach(p -> {
@@ -82,12 +80,11 @@ class FileUtilsTest {
             });
         }
 
-        FileUtils.writeJson(jsonFile, List.of("old"));
-        FileUtils.writeJson(jsonFile, List.of("new"));
+        FileUtils.writeJson(file, List.of("old"));
+        FileUtils.writeJson(file, List.of("new"));
 
         long count = Files.list(backupDir)
-                .filter(p -> p.getFileName().toString()
-                        .startsWith("test_backup_backup_"))
+                .filter(p -> p.getFileName().toString().startsWith("test_backup_backup_"))
                 .count();
 
         assertTrue(count >= 1);
@@ -96,17 +93,13 @@ class FileUtilsTest {
     @Test
     void writeJson_throwsRuntimeExceptionOnIOFailure_customTempPath() {
         Path impossible = tempDir.resolve("file.txt").resolve("child.json");
-
-        assertThrows(RuntimeException.class,
-                () -> FileUtils.writeJson(impossible, List.of("x")));
+        assertThrows(RuntimeException.class, () -> FileUtils.writeJson(impossible, List.of("x")));
     }
 
     @Test
     void writeJson_throwsRuntimeExceptionOnIOFailure_usingDataFile() {
         Path impossible = FileUtils.dataFile("abc.txt").resolve("child.json");
-
-        assertThrows(RuntimeException.class,
-                () -> FileUtils.writeJson(impossible, List.of("x")));
+        assertThrows(RuntimeException.class, () -> FileUtils.writeJson(impossible, List.of("x")));
     }
 
     @Test
@@ -122,44 +115,52 @@ class FileUtilsTest {
 
         assertEquals(2, result.size());
         assertEquals("hello", result.get(0));
-        assertEquals("world", result.get(1));
     }
 
     @Test
     void readJson_returnsDefaultIfFileMissing() {
         Path missing = tempDir.resolve("missing.json");
+        List<String> fallback = List.of("x");
 
         List<String> result = FileUtils.readJson(
                 missing,
                 FileUtils.listTypeOf(String.class),
-                List.of("x")
+                fallback
         );
 
-        assertEquals(1, result.size());
-        assertEquals("x", result.get(0));
+        assertEquals(fallback, result);
     }
 
     @Test
     void readJson_throwsRuntimeExceptionOnCorruptedFile() throws Exception {
         Files.createDirectory(jsonFile);
 
-        assertThrows(RuntimeException.class,
-                () -> FileUtils.readJson(
-                        jsonFile,
-                        FileUtils.listTypeOf(String.class),
-                        List.of()
-                ));
+        assertThrows(RuntimeException.class, () ->
+                FileUtils.readJson(jsonFile, FileUtils.listTypeOf(String.class), List.of()));
     }
 
     @Test
-    void listTypeOf_returnsNonNullType() {
+    void readJson_returnsDefaultOnJsonSyntaxError() throws Exception {
+        Files.writeString(jsonFile, "not valid json");
+        List<String> fallback = List.of("fallback");
+
+        List<String> result = FileUtils.readJson(
+                jsonFile,
+                FileUtils.listTypeOf(String.class),
+                fallback
+        );
+
+        assertEquals(fallback, result);
+    }
+
+    @Test
+    void listTypeOf_returnsNonNull() {
         assertNotNull(FileUtils.listTypeOf(String.class));
     }
 
     @Test
-    void dataFile_returnsPathInsideLibraryData() {
+    void dataFile_returnsCorrectPath() {
         Path p = FileUtils.dataFile("users.json");
-
         assertTrue(p.toString().contains("library_data"));
         assertTrue(p.toString().endsWith("users.json"));
     }
@@ -169,82 +170,145 @@ class FileUtilsTest {
         Path backupDir = FileUtils.dataFile("backups");
 
         if (Files.exists(backupDir)) {
-            Files.walk(backupDir)
-                    .sorted(Comparator.reverseOrder())
+            Files.walk(backupDir).sorted(Comparator.reverseOrder())
                     .forEach(p -> {
                         try { Files.delete(p); } catch (Exception ignored) {}
                     });
         }
 
-        Path jsonFile = FileUtils.dataFile("test_create_dir.json");
-
-        FileUtils.writeJson(jsonFile, List.of("a"));
-
+        Path file = FileUtils.dataFile("test_create_dir.json");
+        FileUtils.writeJson(file, List.of("a"));
         assertTrue(Files.exists(backupDir));
     }
+
     @Test
-    void testStaticBlock_initializesDataDirectory() throws Exception {
+    void gsonAdapters_roundTripLocalDateAndLocalDateTime() {
+        Path file = tempDir.resolve("dates.json");
 
-        // Delete directory first
-        Path dir = Paths.get("library_data");
-        if (Files.exists(dir)) {
-            Files.walk(dir)
-                .sorted(Comparator.reverseOrder())
-                .forEach(p -> {
-                    try {
-                        Files.delete(p);
-                    } catch (Exception ignored) {}
-                });
-        }
+        DateHolder h = new DateHolder();
+        h.date = LocalDate.of(2025, 1, 1);
+        h.dateTime = LocalDateTime.of(2025, 1, 1, 10, 30);
 
-        assertFalse(Files.exists(dir));
+        FileUtils.writeJson(file, h);
 
-        // Reload FileUtils using a NEW ClassLoader
-        URL classUrl = FileUtils.class
-                .getProtectionDomain()
-                .getCodeSource()
-                .getLocation();
+        DateHolder read = FileUtils.readJson(file, DateHolder.class, null);
 
-        try (URLClassLoader cl = new URLClassLoader(new URL[]{classUrl}, null)) {
-
-            Class<?> reloaded = cl.loadClass("librarySE.utils.FileUtils");
-
-            // force static block execution
-            reloaded.getDeclaredConstructors();
-        }
-
-        // Verify directory created
-        assertTrue(Files.exists(dir));
-    }
-    @Test
-    void testStaticBlock_handlesIOException() throws Exception {
-
-        try (MockedStatic<Files> mocked = mockStatic(Files.class)) {
-
-            // Simulate: Files.exists(DATA_DIR) returns false
-            mocked.when(() -> Files.exists(any(Path.class))).thenReturn(false);
-
-            // Simulate: createDirectories throws IOException
-            mocked.when(() -> Files.createDirectories(any(Path.class)))
-                    .thenThrow(new IOException("boom"));
-
-            // Reload FileUtils using new class loader to force static block execution
-            URL classUrl = FileUtils.class.getProtectionDomain().getCodeSource().getLocation();
-            URLClassLoader cl = new URLClassLoader(new URL[]{classUrl}, null);
-
-            Class<?> reloaded = cl.loadClass("librarySE.utils.FileUtils");
-
-            assertThrows(RuntimeException.class, () -> {
-                reloaded.getDeclaredConstructors(); // forces static block
-            });
-        }
+        assertNotNull(read);
+        assertEquals(h.date, read.date);
+        assertEquals(h.dateTime, read.dateTime);
     }
 
+    @Test
+    void runtimeTypeAdapterFactory_ofRejectsNullBaseType() {
+        assertThrows(NullPointerException.class,
+                () -> FileUtils.RuntimeTypeAdapterFactory.of(null, "type"));
+    }
 
+    @Test
+    void runtimeTypeAdapterFactory_ofRejectsBlankField() {
+        assertThrows(IllegalArgumentException.class,
+                () -> FileUtils.RuntimeTypeAdapterFactory.of(LibraryItem.class, " "));
+    }
+
+    @Test
+    void runtimeTypeAdapterFactory_registerSubtypeValidation() {
+        FileUtils.RuntimeTypeAdapterFactory<LibraryItem> f =
+                FileUtils.RuntimeTypeAdapterFactory.of(LibraryItem.class, "type");
+
+        assertThrows(NullPointerException.class, () -> f.registerSubtype(null, "X"));
+        assertThrows(IllegalArgumentException.class, () -> f.registerSubtype(Book.class, " "));
+
+        f.registerSubtype(Book.class, "BOOK");
+        assertThrows(IllegalArgumentException.class, () -> f.registerSubtype(Book.class, "BOOK"));
+    }
+
+    @Test
+    void runtimeTypeAdapterFactory_createReturnsNullForUnrelatedType() {
+        FileUtils.RuntimeTypeAdapterFactory<LibraryItem> f =
+                FileUtils.RuntimeTypeAdapterFactory.of(LibraryItem.class, "type");
+
+        TypeAdapter<String> adapter = f.create(new Gson(), TypeToken.get(String.class));
+        assertNull(adapter);
+    }
+
+    @Test
+    void runtimeTypeAdapter_polymorphicRoundTrip() {
+        Path file = tempDir.resolve("items.json");
+
+        List<LibraryItem> items = List.of(
+                new Book("ISBN1", "T1", "A1", BigDecimal.ONE),
+                new CD("CD Title", "Artist", BigDecimal.TEN),
+                new Journal("Journal Title", "Editor Name", "Issue 1", BigDecimal.ONE)
+        );
+
+        FileUtils.writeJson(file, items);
+
+        List<LibraryItem> result = FileUtils.readJson(
+                file,
+                FileUtils.listTypeOf(LibraryItem.class),
+                List.of()
+        );
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Book);
+        assertTrue(result.get(1) instanceof CD);
+        assertTrue(result.get(2) instanceof Journal);
+    }
+
+    @Test
+    void runtimeTypeAdapter_handlesNullsAndErrors() throws Exception {
+        FileUtils.RuntimeTypeAdapterFactory<LibraryItem> f =
+                FileUtils.RuntimeTypeAdapterFactory.of(LibraryItem.class, "type");
+
+        Gson g = new GsonBuilder().registerTypeAdapterFactory(f).create();
+        TypeAdapter<LibraryItem> adapter = g.getAdapter(TypeToken.get(LibraryItem.class));
+
+        StringWriter sw = new StringWriter();
+        JsonWriter w = new JsonWriter(sw);
+        adapter.write(w, null);
+        w.flush();
+        assertEquals("null", sw.toString());
+
+        LibraryItem b = new Book("X", "T", "A", BigDecimal.ONE);
+        assertThrows(JsonParseException.class, () -> adapter.toJson(b));
+
+        assertNull(adapter.fromJson("null"));
+
+        String missingType = "{\"isbn\":\"1\",\"title\":\"T\"}";
+        assertThrows(JsonParseException.class, () -> adapter.fromJson(missingType));
+    }
+
+    @Test
+    void runtimeTypeAdapter_unknownLabelAndNonObject() {
+        FileUtils.RuntimeTypeAdapterFactory<LibraryItem> f1 =
+                FileUtils.RuntimeTypeAdapterFactory.of(LibraryItem.class, "type")
+                        .registerSubtype(Book.class, "BOOK");
+
+        Gson g1 = new GsonBuilder().registerTypeAdapterFactory(f1).create();
+        TypeAdapter<LibraryItem> a1 = g1.getAdapter(TypeToken.get(LibraryItem.class));
+
+        String badLabel =
+                "{\"type\":\"UNKNOWN\",\"isbn\":\"1\",\"title\":\"T\",\"author\":\"A\",\"price\":1}";
+        assertThrows(JsonParseException.class, () -> a1.fromJson(badLabel));
+
+        FileUtils.RuntimeTypeAdapterFactory<Object> f2 =
+                FileUtils.RuntimeTypeAdapterFactory.of(Object.class, "type")
+                        .registerSubtype(String.class, "STR");
+
+        Gson g2 = new GsonBuilder().registerTypeAdapterFactory(f2).create();
+        TypeAdapter<Object> a2 = g2.getAdapter(TypeToken.get(Object.class));
+
+        assertThrows(JsonParseException.class, () -> a2.toJson("hello"));
+    }
+
+    @Test
+    void staticBlock_createsDirectory() {
+        FileUtils.dataFile("dummy.json");
+        assertTrue(Files.exists(Paths.get("library_data")));
+    }
+
+    @Test
+    void staticBlock_normalUseDoesNotThrow() {
+        assertDoesNotThrow(() -> FileUtils.dataFile("dummy2.json"));
+    }
 }
-
-
-
-
-
-

@@ -2,35 +2,62 @@ package librarySE.managers;
 
 import java.math.BigDecimal;
 
-import librarySE.strategy.BaseFineStrategy;
 import librarySE.strategy.FineStrategy;
 import librarySE.strategy.FineStrategyFactory;
 
 /**
- * Context class that aggregates a {@link FineStrategy} to calculate fines.
- * <p>
- * Implements the Strategy Pattern — this class delegates fine calculation
- * and borrow period logic to the assigned strategy.
- * </p>
+ * A flexible context class that delegates fine calculation and borrow-period
+ * rules to a pluggable {@link FineStrategy}.
  *
  * <p>
- * The context does not depend on any specific material type, allowing
- * complete flexibility when switching strategies at runtime.
+ * This class embodies the <b>Strategy Pattern</b>: instead of embedding any
+ * fine-related logic, it outsources all computations to the strategy currently
+ * assigned. This allows seamless switching between different fine policies at
+ * runtime (e.g., books, journals, CDs, premium materials, or custom rules).
  * </p>
  *
- * @author Malak
- * 
+ * <h3>Key Characteristics</h3>
+ * <ul>
+ *   <li>Decouples fine logic from the rest of the system</li>
+ *   <li>Supports runtime strategy replacement through {@link #setStrategy(FineStrategy)}</li>
+ *   <li>Promotes high configurability and extensibility</li>
+ *   <li>Works with any class implementing {@link FineStrategy}</li>
+ * </ul>
+ *
+ * <p>
+ * The context itself contains no material-specific assumptions, making it fully
+ * reusable across the entire library domain.
+ * </p>
+ *
+ * <h3>Example Usage</h3>
+ * <pre>{@code
+ * FineStrategy strategy = FineStrategyFactory.forBooks();
+ * FineContext context = new FineContext(strategy);
+ *
+ * BigDecimal fine = context.calculateFine(3);  // Fine for 3 overdue days
+ * int period = context.getBorrowPeriodDays(); // Borrow duration set by strategy
+ *
+ * // Switch strategy dynamically:
+ * context.setStrategy(FineStrategyFactory.forJournals());
+ * }</pre>
+ *
+ * <p>
+ * This design ensures that policy changes require no modification to the
+ * context itself — only the strategies evolve.
+ * </p>
+ *
+ * @author Eman
  */
 public class FineContext {
 
-    /** The fine calculation strategy (aggregated object). */
+    /** The active fine calculation strategy. */
     private FineStrategy strategy;
 
     /**
-     * Constructs a {@code FineContext} with the given fine strategy.
+     * Creates a {@code FineContext} with the provided strategy.
      *
      * @param strategy the fine strategy to use; must not be null
-     * @throws IllegalArgumentException if {@code strategy} is null
+     * @throws IllegalArgumentException if the provided strategy is null
      */
     public FineContext(FineStrategy strategy) {
         if (strategy == null)
@@ -39,10 +66,13 @@ public class FineContext {
     }
 
     /**
-     * Sets or replaces the current fine strategy at runtime.
+     * Replaces the active fine strategy at runtime.
+     * <p>
+     * Enables dynamic behavioral changes in borrowing and penalty policies.
+     * </p>
      *
-     * @param strategy the new fine strategy to assign
-     * @throws IllegalArgumentException if {@code strategy} is null
+     * @param strategy the new fine strategy
+     * @throws IllegalArgumentException if the provided strategy is null
      */
     public void setStrategy(FineStrategy strategy) {
         if (strategy == null)
@@ -51,20 +81,20 @@ public class FineContext {
     }
 
     /**
-     * Calculates the fine for the given number of overdue days
-     * using the current strategy.
+     * Computes the fine for the specified number of overdue days
+     * using the currently assigned strategy.
      *
-     * @param overdueDays number of days the item is overdue
-     * @return calculated fine as a {@link BigDecimal}
+     * @param overdueDays number of days an item is overdue
+     * @return the calculated fine as a {@link BigDecimal}
      */
     public BigDecimal calculateFine(long overdueDays) {
         return strategy.calculateFine(overdueDays);
     }
 
     /**
-     * Returns the allowed borrow period in days for the current strategy.
+     * Retrieves the borrowing period (in days) defined by the current strategy.
      *
-     * @return allowed borrowing period in days
+     * @return number of days an item may be borrowed before becoming overdue
      */
     public int getBorrowPeriodDays() {
         return strategy.getBorrowPeriodDays();

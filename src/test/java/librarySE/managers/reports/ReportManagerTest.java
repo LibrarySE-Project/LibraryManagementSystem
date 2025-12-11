@@ -1,25 +1,36 @@
 package librarySE.managers.reports;
 
-import librarySE.core.*;
-import librarySE.managers.*;
+import librarySE.core.Book;
+import librarySE.core.LibraryItem;
+import librarySE.managers.BorrowRecord;
+import librarySE.managers.Role;
+import librarySE.managers.User;
+
 import org.junit.jupiter.api.*;
 
 import java.math.BigDecimal;
+import java.lang.reflect.Field;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class ReportManagerTest {
 
-    ReportManager manager;
-    User u;
-    LibraryItem book;
-    BorrowRecord r;
+    private ReportManager manager;
+    private User u;
+    private LibraryItem book;
+    private BorrowRecord r;
+
+    // Mocked exporter injected via reflection so we avoid real I/O
+    private ReportExporter mockExporter;
 
     @BeforeEach
-    void setup() {
+    void setup() throws Exception {
+        // User from librarySE.managers with Role enum in the same package
         u = new User("A", Role.USER, "pass123", "a@ps.com");
+
         book = new Book("ISBN", "T", "A", BigDecimal.TEN);
 
         r = new BorrowRecord(
@@ -30,6 +41,12 @@ class ReportManagerTest {
         );
 
         manager = new ReportManager(List.of(r));
+
+        // Replace the real exporter with a Mockito mock to control behavior
+        mockExporter = mock(ReportExporter.class);
+        Field exporterField = ReportManager.class.getDeclaredField("exporter");
+        exporterField.setAccessible(true);
+        exporterField.set(manager, mockExporter);
     }
 
     // ================
@@ -73,12 +90,19 @@ class ReportManagerTest {
     // ==========================
 
     @Test
-    void testExportCsv_NoException() {
-        assertDoesNotThrow(() -> manager.exportFinesCsv(LocalDate.now()));
+    void testExportCsv_DelegatesToExporter() {
+        LocalDate today = LocalDate.now();
+
+        manager.exportFinesCsv(today);
+
+        verify(mockExporter).exportFinesReportToCsv(today);
     }
 
     @Test
-    void testExportCsv_NullDateThrows() {
+    void testExportCsv_NullDatePropagatesIllegalArgumentException() {
+        doThrow(new IllegalArgumentException("date must not be null"))
+                .when(mockExporter).exportFinesReportToCsv(null);
+
         assertThrows(IllegalArgumentException.class,
                 () -> manager.exportFinesCsv(null));
     }

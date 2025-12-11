@@ -26,7 +26,7 @@ class LibraryItemFactoryTest {
     }
 
     // ----------------------------------------------------------
-    //  Book Creation Tests
+    //  Book Creation Tests (legacy create(...))
     // ----------------------------------------------------------
 
     @Test
@@ -56,11 +56,12 @@ class LibraryItemFactoryTest {
                 "Author"
         );
 
+        assertTrue(item instanceof Book);
         assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
     }
 
     // ----------------------------------------------------------
-    //  CD Creation Tests
+    //  CD Creation Tests (legacy create(...))
     // ----------------------------------------------------------
 
     @Test
@@ -87,11 +88,12 @@ class LibraryItemFactoryTest {
                 "MJ"
         );
 
+        assertTrue(item instanceof CD);
         assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
     }
 
     // ----------------------------------------------------------
-    //  Journal Creation Tests
+    //  Journal Creation Tests (legacy create(...))
     // ----------------------------------------------------------
 
     @Test
@@ -120,11 +122,12 @@ class LibraryItemFactoryTest {
                 "Vol 10"
         );
 
+        assertTrue(item instanceof Journal);
         assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
     }
 
     // ----------------------------------------------------------
-    //  Missing-Args Negative Tests
+    //  Missing-Args Negative Tests (legacy create(...))
     // ----------------------------------------------------------
 
     @Test
@@ -146,7 +149,7 @@ class LibraryItemFactoryTest {
     }
 
     // ----------------------------------------------------------
-    //  Invalid Price Negative Tests
+    //  Invalid Price Negative Tests (non-numeric)
     // ----------------------------------------------------------
 
     @Test
@@ -158,18 +161,6 @@ class LibraryItemFactoryTest {
                         "Title",
                         "Author",
                         "NOT_A_NUMBER"
-                ));
-    }
-
-    @Test
-    void testCreateBook_EmptyPrice_Throws() {
-        assertThrows(NumberFormatException.class,
-                () -> LibraryItemFactory.create(
-                        MaterialType.BOOK,
-                        "ISBN",
-                        "Title",
-                        "Author",
-                        ""
                 ));
     }
 
@@ -194,5 +185,120 @@ class LibraryItemFactoryTest {
                         "Vol 1",
                         "NaN"
                 ));
+    }
+
+    // ----------------------------------------------------------
+    //  Empty price → null in parsePrice → default price in item
+    // ----------------------------------------------------------
+
+    @Test
+    void testCreateBook_EmptyPrice_UsesDefaultPrice() {
+        double defaultPrice = Config.getDouble("price.book.default", 0.0);
+
+        LibraryItem item = LibraryItemFactory.create(
+                MaterialType.BOOK,
+                "ISBN",
+                "Title",
+                "Author",
+                ""   // empty price → parsePrice() returns null
+        );
+
+        assertTrue(item instanceof Book);
+        assertEquals(BigDecimal.valueOf(defaultPrice), item.getPrice());
+    }
+
+    // ----------------------------------------------------------
+    //  Negative price → IllegalArgumentException from parsePrice
+    // ----------------------------------------------------------
+
+    @Test
+    void testCreateBook_NegativePrice_ThrowsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> LibraryItemFactory.createBook(
+                        "NEGISBN",
+                        "Negative",
+                        "Author",
+                        "-5.0",
+                        1
+                ));
+    }
+
+    // ----------------------------------------------------------
+    //  Direct overloads coverage: createBook(...)
+    // ----------------------------------------------------------
+
+    @Test
+    void testCreateBook_AllOverloads() {
+        // default price, 1 copy
+        LibraryItem b1 = LibraryItemFactory.createBook("ISBN1", "T1", "A1");
+        assertTrue(b1 instanceof Book);
+
+        // explicit price, 1 copy
+        LibraryItem b2 = LibraryItemFactory.createBook("ISBN2", "T2", "A2", "12.5");
+        assertTrue(b2 instanceof Book);
+        assertEquals(BigDecimal.valueOf(12.5), b2.getPrice());
+
+        // default price, multiple copies
+        LibraryItem b3 = LibraryItemFactory.createBook("ISBN3", "T3", "A3", 3);
+        assertTrue(b3 instanceof Book);
+
+        // explicit price, multiple copies
+        LibraryItem b4 = LibraryItemFactory.createBook("ISBN4", "T4", "A4", "30.0", 4);
+        assertTrue(b4 instanceof Book);
+        assertEquals(BigDecimal.valueOf(30.0), b4.getPrice());
+    }
+
+    // ----------------------------------------------------------
+    //  Direct overloads coverage: createCd(...)
+    // ----------------------------------------------------------
+
+    @Test
+    void testCreateCd_AllOverloads() {
+        // default price, 1 copy
+        LibraryItem c1 = LibraryItemFactory.createCd("Album1", "Singer1");
+        assertTrue(c1 instanceof CD);
+
+        // explicit price, 1 copy
+        LibraryItem c2 = LibraryItemFactory.createCd("Album2", "Singer2", "15.0");
+        assertTrue(c2 instanceof CD);
+        assertEquals(BigDecimal.valueOf(15.0), c2.getPrice());
+
+        // default price, multiple copies
+        LibraryItem c3 = LibraryItemFactory.createCd("Album3", "Singer3", 2);
+        assertTrue(c3 instanceof CD);
+
+        // explicit price, multiple copies
+        LibraryItem c4 = LibraryItemFactory.createCd("Album4", "Singer4", "22.0", 5);
+        assertTrue(c4 instanceof CD);
+        assertEquals(BigDecimal.valueOf(22.0), c4.getPrice());
+    }
+
+    // ----------------------------------------------------------
+    //  Direct overloads coverage: createJournal(...)
+    // ----------------------------------------------------------
+
+    @Test
+    void testCreateJournal_AllOverloads() {
+        // default price, 1 copy
+        LibraryItem j1 = LibraryItemFactory.createJournal(
+                "J1", "Ed1", "Issue1");
+        assertTrue(j1 instanceof Journal);
+
+        // explicit price, 1 copy
+        LibraryItem j2 = LibraryItemFactory.createJournal(
+                "J2", "Ed2", "Issue2", "18.0");
+        assertTrue(j2 instanceof Journal);
+        assertEquals(BigDecimal.valueOf(18.0), j2.getPrice());
+
+        // default price, multiple copies
+        LibraryItem j3 = LibraryItemFactory.createJournal(
+                "J3", "Ed3", "Issue3", 3);
+        assertTrue(j3 instanceof Journal);
+
+        // explicit price, multiple copies
+        LibraryItem j4 = LibraryItemFactory.createJournal(
+                "J4", "Ed4", "Issue4", "27.5", 4);
+        assertTrue(j4 instanceof Journal);
+        assertEquals(BigDecimal.valueOf(27.5), j4.getPrice());
     }
 }

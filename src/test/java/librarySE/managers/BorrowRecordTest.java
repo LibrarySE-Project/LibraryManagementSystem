@@ -297,5 +297,20 @@ class BorrowRecordTest {
 
      assertEquals(fine, record.getFinePaid());
  }
+ @Test
+ void ensureFineStrategy_rebuildsStrategyWhenNull() throws Exception {
+     // Make the fineStrategy field null using reflection (simulating deserialization)
+     var field = BorrowRecord.class.getDeclaredField("fineStrategy");
+     field.setAccessible(true);
+     field.set(record, null);
+
+     assertNull(field.get(record));
+
+     // Call ensureFineStrategy()
+     record.ensureFineStrategy();
+
+     // The strategy should now be rebuilt from the item's material type
+     assertNotNull(field.get(record));
+ }
 
 }
