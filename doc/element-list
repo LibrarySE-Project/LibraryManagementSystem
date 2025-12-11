@@ -1,0 +1,8 @@
+librarySE.core
+librarySE.managers
+librarySE.managers.notifications
+librarySE.managers.reports
+librarySE.repo
+librarySE.search
+librarySE.strategy
+librarySE.utils
