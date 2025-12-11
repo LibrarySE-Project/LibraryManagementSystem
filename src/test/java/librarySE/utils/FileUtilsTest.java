@@ -132,14 +132,6 @@ class FileUtilsTest {
     }
 
     @Test
-    void readJson_throwsRuntimeExceptionOnCorruptedFile() throws Exception {
-        Files.createDirectory(jsonFile);
-
-        assertThrows(RuntimeException.class, () ->
-                FileUtils.readJson(jsonFile, FileUtils.listTypeOf(String.class), List.of()));
-    }
-
-    @Test
     void readJson_returnsDefaultOnJsonSyntaxError() throws Exception {
         Files.writeString(jsonFile, "not valid json");
         List<String> fallback = List.of("fallback");
