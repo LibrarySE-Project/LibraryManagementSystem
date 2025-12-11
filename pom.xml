@@ -10,16 +10,19 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-	<properties>
-	    <maven.compiler.source>22</maven.compiler.source>
-	    <maven.compiler.target>22</maven.compiler.target>
-	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	
-   <!-- SonarCloud configuration -->
+<properties>
+    <maven.compiler.source>22</maven.compiler.source>
+    <maven.compiler.target>22</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- SonarCloud configuration -->
     <sonar.organization>libraryse-project</sonar.organization>
     <sonar.projectKey>LibrarySE-Project_LibraryManagementSystem</sonar.projectKey>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-	</properties>
+
+    <!-- Exclude GUI package from coverage in SonarCloud -->
+    <sonar.coverage.exclusions>src/main/java/librarySE/app/**</sonar.coverage.exclusions>
+</properties>
 
 
     <dependencies>
@@ -95,6 +98,35 @@
                     <mainClass>librarySE.ui.LibraryApp</mainClass>
                 </configuration>
             </plugin>
+                        <plugin>
+		    <groupId>org.jacoco</groupId>
+		    <artifactId>jacoco-maven-plugin</artifactId>
+		    <version>0.8.11</version>
+		
+		    <configuration>
+		        <excludes>
+		            <exclude>librarySE/app/**</exclude>
+		        </excludes>
+		    </configuration>
+		
+		    <executions>
+		        <execution>
+		            <goals>
+		                <goal>prepare-agent</goal>
+		            </goals>
+		        </execution>
+		
+		        <execution>
+		            <id>report</id>
+		            <phase>test</phase>
+		            <goals>
+		                <goal>report</goal>
+		            </goals>
+		        </execution>
+		    </executions>
+		</plugin>
+
+
         </plugins>
     </build>
 
