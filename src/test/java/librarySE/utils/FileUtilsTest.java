@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import librarySE.core.Book;
 import librarySE.core.CD;
@@ -12,18 +13,26 @@ import librarySE.core.Journal;
 import librarySE.core.LibraryItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.List;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 
 class FileUtilsTest {
 
@@ -41,28 +50,27 @@ class FileUtilsTest {
         jsonFile = tempDir.resolve("test.json");
     }
 
+    // -----------------------------------------------------------------
+    // writeJson / backup behaviour
+    // -----------------------------------------------------------------
+
     @Test
     void writeJson_createsFileInCustomDirectory() {
-        List<String> data = List.of("a", "b");
-        FileUtils.writeJson(jsonFile, data);
+        FileUtils.writeJson(jsonFile, List.of("a", "b"));
         assertTrue(Files.exists(jsonFile));
     }
 
     @Test
     void writeJson_createsBackupWhenFileAlreadyExists() throws Exception {
         Path file = FileUtils.dataFile("test_backup_file.json");
-        if (Files.exists(file)) Files.delete(file);
 
-        List<String> d1 = List.of("old");
-        List<String> d2 = List.of("new");
-
-        FileUtils.writeJson(file, d1);
+        FileUtils.writeJson(file, List.of("old"));
         assertTrue(Files.exists(file));
 
-        FileUtils.writeJson(file, d2);
-        Path backup = FileUtils.dataFile("backups");
+        FileUtils.writeJson(file, List.of("new"));
+        Path backupDir = FileUtils.dataFile("backups");
 
-        long count = Files.list(backup)
+        long count = Files.list(backupDir)
                 .filter(p -> p.getFileName().toString().startsWith("test_backup_file_backup"))
                 .count();
 
@@ -76,7 +84,7 @@ class FileUtilsTest {
 
         if (Files.exists(backupDir)) {
             Files.list(backupDir).forEach(p -> {
-                try { Files.delete(p); } catch (Exception ignored) {}
+                try { Files.deleteIfExists(p); } catch (Exception ignored) {}
             });
         }
 
@@ -103,9 +111,33 @@ class FileUtilsTest {
     }
 
     @Test
+    void ensureBackupDirExists_createsDirectoryIfMissing() throws Exception {
+        Path backupDir = FileUtils.dataFile("backups");
+
+        if (Files.exists(backupDir)) {
+            Files.list(backupDir)
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+                    });
+            Files.deleteIfExists(backupDir);
+        }
+
+        Method m = FileUtils.class.getDeclaredMethod("ensureBackupDirExists");
+        m.setAccessible(true);
+        Path dir = (Path) m.invoke(null);
+
+        assertTrue(Files.exists(dir));
+        assertEquals("backups", dir.getFileName().toString());
+    }
+
+    // -----------------------------------------------------------------
+    // readJson behaviour
+    // -----------------------------------------------------------------
+
+    @Test
     void readJson_readsDataCorrectly() {
-        List<String> data = List.of("hello", "world");
-        FileUtils.writeJson(jsonFile, data);
+        FileUtils.writeJson(jsonFile, List.of("hello", "world"));
 
         List<String> result = FileUtils.readJson(
                 jsonFile,
@@ -134,6 +166,7 @@ class FileUtilsTest {
     @Test
     void readJson_returnsDefaultOnJsonSyntaxError() throws Exception {
         Files.writeString(jsonFile, "not valid json");
+
         List<String> fallback = List.of("fallback");
 
         List<String> result = FileUtils.readJson(
@@ -144,6 +177,19 @@ class FileUtilsTest {
 
         assertEquals(fallback, result);
     }
+
+    @Test
+    void readJson_wrapsIOExceptionInRuntimeException() throws Exception {
+        Path dir = tempDir.resolve("as_directory");
+        Files.createDirectory(dir);
+
+        assertThrows(RuntimeException.class,
+                () -> FileUtils.readJson(dir, FileUtils.listTypeOf(String.class), List.of()));
+    }
+
+    // -----------------------------------------------------------------
+    // Path & type helpers
+    // -----------------------------------------------------------------
 
     @Test
     void listTypeOf_returnsNonNull() {
@@ -157,24 +203,12 @@ class FileUtilsTest {
         assertTrue(p.toString().endsWith("users.json"));
     }
 
-    @Test
-    void writeJson_createsBackupDirectoryIfMissing() throws Exception {
-        Path backupDir = FileUtils.dataFile("backups");
-
-        if (Files.exists(backupDir)) {
-            Files.walk(backupDir).sorted(Comparator.reverseOrder())
-                    .forEach(p -> {
-                        try { Files.delete(p); } catch (Exception ignored) {}
-                    });
-        }
-
-        Path file = FileUtils.dataFile("test_create_dir.json");
-        FileUtils.writeJson(file, List.of("a"));
-        assertTrue(Files.exists(backupDir));
-    }
+    // -----------------------------------------------------------------
+    // Date adapters (null + non-null)
+    // -----------------------------------------------------------------
 
     @Test
-    void gsonAdapters_roundTripLocalDateAndLocalDateTime() {
+    void gsonAdapters_roundTripLocalDateAndLocalDateTime_nonNullValues() {
         Path file = tempDir.resolve("dates.json");
 
         DateHolder h = new DateHolder();
@@ -189,6 +223,81 @@ class FileUtilsTest {
         assertEquals(h.date, read.date);
         assertEquals(h.dateTime, read.dateTime);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void gsonAdapters_handleNullForLocalDateAndLocalDateTime() throws Exception {
+        Method mLdt = FileUtils.class.getDeclaredMethod("createLocalDateTimeAdapter");
+        mLdt.setAccessible(true);
+        TypeAdapter<LocalDateTime> ldtAdapter =
+                (TypeAdapter<LocalDateTime>) mLdt.invoke(null);
+
+        StringWriter sw1 = new StringWriter();
+        JsonWriter out1 = new JsonWriter(sw1);
+        ldtAdapter.write(out1, null);
+        out1.flush();
+        assertEquals("null", sw1.toString());
+
+        JsonReader in1 = new JsonReader(new StringReader("null"));
+        assertNull(ldtAdapter.read(in1));
+
+        Method mLd = FileUtils.class.getDeclaredMethod("createLocalDateAdapter");
+        mLd.setAccessible(true);
+        TypeAdapter<LocalDate> ldAdapter =
+                (TypeAdapter<LocalDate>) mLd.invoke(null);
+
+        StringWriter sw2 = new StringWriter();
+        JsonWriter out2 = new JsonWriter(sw2);
+        ldAdapter.write(out2, null);
+        out2.flush();
+        assertEquals("null", sw2.toString());
+
+        JsonReader in2 = new JsonReader(new StringReader("null"));
+        assertNull(ldAdapter.read(in2));
+    }
+
+    // -----------------------------------------------------------------
+    // ensureDataDirExists & static buildGson error branch
+    // -----------------------------------------------------------------
+
+    @Test
+    void ensureDataDirExists_whenDirectoryAlreadyExists_doesNotThrow() throws Exception {
+        Path any = FileUtils.dataFile("dummy_from_test.json");
+        Files.writeString(any, "x");
+
+        Method m = FileUtils.class.getDeclaredMethod("ensureDataDirExists");
+        m.setAccessible(true);
+
+        assertDoesNotThrow(() -> {
+            try {
+                m.invoke(null);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e.getCause());
+            }
+        });
+    }
+
+    @Test
+    void buildGson_wrapsIOExceptionFromEnsureDataDirExists() throws Exception {
+        try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
+            filesMock.when(() -> Files.exists(any(Path.class))).thenReturn(false);
+            filesMock.when(() -> Files.createDirectories(any(Path.class)))
+                    .thenThrow(new IOException("simulated failure"));
+
+            Method m = FileUtils.class.getDeclaredMethod("buildGson");
+            m.setAccessible(true);
+
+            InvocationTargetException ex =
+                    assertThrows(InvocationTargetException.class, () -> m.invoke(null));
+
+            assertTrue(ex.getCause() instanceof RuntimeException);
+            assertEquals("Failed to initialize data directory", ex.getCause().getMessage());
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // RuntimeTypeAdapterFactory & polymorphic adapter
+    // -----------------------------------------------------------------
 
     @Test
     void runtimeTypeAdapterFactory_ofRejectsNullBaseType() {
@@ -290,8 +399,12 @@ class FileUtilsTest {
         Gson g2 = new GsonBuilder().registerTypeAdapterFactory(f2).create();
         TypeAdapter<Object> a2 = g2.getAdapter(TypeToken.get(Object.class));
 
-        assertThrows(JsonParseException.class, () -> a2.toJson("hello"));
+        assertThrows(IllegalStateException.class, () -> a2.toJson("hello"));
     }
+
+    // -----------------------------------------------------------------
+    // Static block sanity
+    // -----------------------------------------------------------------
 
     @Test
     void staticBlock_createsDirectory() {

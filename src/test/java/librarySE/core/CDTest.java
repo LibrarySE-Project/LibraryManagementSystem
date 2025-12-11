@@ -168,16 +168,16 @@ class CDTest {
         c.borrow(); // 2/3
         c.borrow(); // 1/3
 
-        c.setTotalCopies(1); // delta = -2 → available = -1 → clamped to 0
+        c.setTotalCopies(1); // delta=-2 → available=-1 → clamped to 0
         assertEquals(1, c.getTotalCopies());
         assertEquals(0, c.getAvailableCopies());
 
-        c.setTotalCopies(5); // delta = +4 → available = 4
+        c.setTotalCopies(5); // delta=+4 → available=4
         assertEquals(5, c.getTotalCopies());
         assertEquals(4, c.getAvailableCopies());
 
-        c.borrow();          // available = 3
-        c.setTotalCopies(10); // delta = +5 → available = 8 (<= total)
+        c.borrow();           // available=3
+        c.setTotalCopies(10); // delta=+7 → available=10 (<= total)
         assertTrue(c.getAvailableCopies() <= c.getTotalCopies());
     }
 
@@ -185,8 +185,8 @@ class CDTest {
     void testSetTotalCopies_ClampWhenAvailableGreaterThanTotal_Reflection() throws Exception {
         CD c = new CD("A", "B", BigDecimal.TEN, 2);
 
-        Field totalField = CD.class.getDeclaredField("totalCopies");
-        Field availableField = CD.class.getDeclaredField("availableCopies");
+        Field totalField = AbstractLibraryItem.class.getDeclaredField("totalCopies");
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         totalField.setAccessible(true);
         availableField.setAccessible(true);
 
@@ -203,8 +203,8 @@ class CDTest {
     void testSetTotalCopies_ClampWhenAvailableNegative_Reflection() throws Exception {
         CD c = new CD("A", "B", BigDecimal.TEN, 2);
 
-        Field totalField = CD.class.getDeclaredField("totalCopies");
-        Field availableField = CD.class.getDeclaredField("availableCopies");
+        Field totalField = AbstractLibraryItem.class.getDeclaredField("totalCopies");
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         totalField.setAccessible(true);
         availableField.setAccessible(true);
 
@@ -259,7 +259,7 @@ class CDTest {
     }
 
     @Test
-    void testBorrow_FailsWhenAlreadyBorrowed_Throws() {
+    void testBorrow_FailsWhenAlreadyBorrowed_ReturnsFalse() {
         // first borrow succeeds
         assertTrue(cd.borrow());
         assertEquals(0, cd.getAvailableCopies());
@@ -269,7 +269,6 @@ class CDTest {
         assertFalse(secondResult, "Second borrow on single-copy CD must fail");
         assertEquals(0, cd.getAvailableCopies(), "Available copies must remain 0");
     }
-
 
     @Test
     void testReturn_Success() {
@@ -320,7 +319,7 @@ class CDTest {
     }
 
     // ---------------------------------------------------------------------
-    // equals basic behaviour (inherited from Object)
+    // equals basic behaviour (Object default)
     // ---------------------------------------------------------------------
 
     @Test

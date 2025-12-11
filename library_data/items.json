@@ -3,9 +3,38 @@
     "type": "CD",
     "title": "x",
     "artist": "x",
-    "totalCopies": 1,
-    "availableCopies": 0,
     "id": "d9eccd33-b4e0-476b-80ff-273a8c3933f9",
-    "price": 39.99
+    "price": 39.99,
+    "totalCopies": 1,
+    "availableCopies": 0
+  },
+  {
+    "type": "BOOK",
+    "isbn": "1225",
+    "title": "c",
+    "author": "n",
+    "id": "e661f420-2b0f-4b59-85ef-52f40998efc7",
+    "price": 20,
+    "totalCopies": 1,
+    "availableCopies": 1
+  },
+  {
+    "type": "JOURNAL",
+    "title": "c",
+    "editor": "n",
+    "issueNumber": "2",
+    "id": "7b5b768b-a2da-4de5-810c-ced3e9e52f1b",
+    "price": 20,
+    "totalCopies": 1,
+    "availableCopies": 1
+  },
+  {
+    "type": "CD",
+    "title": "m",
+    "artist": "a",
+    "id": "f1c653db-7fdc-4f09-8a55-50da73133166",
+    "price": 20,
+    "totalCopies": 1,
+    "availableCopies": 1
   }
 ]

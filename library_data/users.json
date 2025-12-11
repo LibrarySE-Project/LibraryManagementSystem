@@ -6,5 +6,13 @@
     "passwordHash": "545af48592779242691995dff11d83f83e0eaa921bde9b489acba4d1a0cdfdcd",
     "fineBalance": 0,
     "email": "s12216855@stu.najah.edu"
+  },
+  {
+    "id": "93b7e4bd-854a-4e1c-83f3-240be7bb6743",
+    "username": "z",
+    "role": "USER",
+    "passwordHash": "02df9de1e120055c9babf8ecba2af3ff57cc1163b2dbc1c7220f1bb4d0508eb8",
+    "fineBalance": 0,
+    "email": "s12216877@stu.najah.edu"
   }
 ]

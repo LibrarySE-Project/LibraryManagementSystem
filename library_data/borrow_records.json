@@ -12,10 +12,10 @@
       "type": "CD",
       "title": "x",
       "artist": "x",
-      "totalCopies": 1,
-      "availableCopies": 0,
       "id": "d9eccd33-b4e0-476b-80ff-273a8c3933f9",
-      "price": 39.99
+      "price": 39.99,
+      "totalCopies": 1,
+      "availableCopies": 0
     },
     "borrowPeriodDays": 7,
     "borrowDateTime": "2025-12-11T00:00:00",
@@ -24,5 +24,59 @@
     "fineApplied": false,
     "finePaid": 0,
     "status": "BORROWED"
+  },
+  {
+    "user": {
+      "id": "93b7e4bd-854a-4e1c-83f3-240be7bb6743",
+      "username": "z",
+      "role": "USER",
+      "passwordHash": "02df9de1e120055c9babf8ecba2af3ff57cc1163b2dbc1c7220f1bb4d0508eb8",
+      "fineBalance": 0,
+      "email": "s12216877@stu.najah.edu"
+    },
+    "item": {
+      "type": "BOOK",
+      "isbn": "1225",
+      "title": "c",
+      "author": "n",
+      "id": "e661f420-2b0f-4b59-85ef-52f40998efc7",
+      "price": 20,
+      "totalCopies": 1,
+      "availableCopies": 1
+    },
+    "borrowPeriodDays": 10,
+    "borrowDateTime": "2025-12-11T00:00:00",
+    "dueDateTime": "2025-12-21T00:00:00",
+    "fine": 0,
+    "fineApplied": false,
+    "finePaid": 0,
+    "status": "RETURNED"
+  },
+  {
+    "user": {
+      "id": "0e8d3466-cada-46be-ab7f-a3c105c2440f",
+      "username": "adm",
+      "role": "USER",
+      "passwordHash": "545af48592779242691995dff11d83f83e0eaa921bde9b489acba4d1a0cdfdcd",
+      "fineBalance": 0,
+      "email": "s12216855@stu.najah.edu"
+    },
+    "item": {
+      "type": "BOOK",
+      "isbn": "1225",
+      "title": "c",
+      "author": "n",
+      "id": "e661f420-2b0f-4b59-85ef-52f40998efc7",
+      "price": 20,
+      "totalCopies": 1,
+      "availableCopies": 1
+    },
+    "borrowPeriodDays": 10,
+    "borrowDateTime": "2025-12-11T00:00:00",
+    "dueDateTime": "2025-12-21T00:00:00",
+    "fine": 0,
+    "fineApplied": false,
+    "finePaid": 0,
+    "status": "RETURNED"
   }
 ]

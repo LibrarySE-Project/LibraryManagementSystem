@@ -2,6 +2,7 @@ package librarySE.core;
 
 
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -26,7 +27,7 @@ import java.util.UUID;
  * @author Eman
  * 
  */
-public interface LibraryItem extends Borrowable, Searchable {
+public interface LibraryItem extends Borrowable, Searchable, Serializable {
 
     /**
      * Returns the unique identifier of this library item.

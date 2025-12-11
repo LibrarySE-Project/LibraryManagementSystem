@@ -30,7 +30,7 @@ class BookTest {
     }
 
     // ----------------------------------------------------------
-    // Constructor / initPrice / initCopies
+    // Constructor / initPrice
     // ----------------------------------------------------------
 
     @Test
@@ -194,8 +194,8 @@ class BookTest {
     void testSetTotalCopies_ClampAvailableGreaterThanTotal_Reflection() throws Exception {
         Book b = new Book("X", "Y", "Z", BigDecimal.TEN, 2);
 
-        Field totalField = Book.class.getDeclaredField("totalCopies");
-        Field availableField = Book.class.getDeclaredField("availableCopies");
+        Field totalField = AbstractLibraryItem.class.getDeclaredField("totalCopies");
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         totalField.setAccessible(true);
         availableField.setAccessible(true);
 
@@ -212,8 +212,8 @@ class BookTest {
     void testSetTotalCopies_ClampAvailableLessThanZero_Reflection() throws Exception {
         Book b = new Book("X", "Y", "Z", BigDecimal.TEN, 2);
 
-        Field totalField = Book.class.getDeclaredField("totalCopies");
-        Field availableField = Book.class.getDeclaredField("availableCopies");
+        Field totalField = AbstractLibraryItem.class.getDeclaredField("totalCopies");
+        Field availableField = AbstractLibraryItem.class.getDeclaredField("availableCopies");
         totalField.setAccessible(true);
         availableField.setAccessible(true);
 
@@ -252,7 +252,7 @@ class BookTest {
 
     @Test
     void testMatchesKeyword_CaseInsensitive() {
-        assertTrue(book.matchesKeyword("author name".toLowerCase()));
+        assertTrue(book.matchesKeyword("author name"));
     }
 
     @Test
@@ -279,7 +279,7 @@ class BookTest {
     }
 
     @Test
-    void testBorrow_WhenAlreadyBorrowed_Throws() {
+    void testBorrow_WhenAlreadyBorrowed_ReturnsFalse() {
         // first borrow succeeds
         assertTrue(book.borrow());
         assertEquals(0, book.getAvailableCopies());
@@ -289,7 +289,6 @@ class BookTest {
         assertFalse(secondResult, "Second borrow on a single-copy book must fail");
         assertEquals(0, book.getAvailableCopies(), "Available copies must remain 0");
     }
-
 
     @Test
     void testReturn_Success() {
