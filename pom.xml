@@ -10,11 +10,17 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <properties>
-        <maven.compiler.source>22</maven.compiler.source>
-        <maven.compiler.target>22</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+	<properties>
+	    <maven.compiler.source>22</maven.compiler.source>
+	    <maven.compiler.target>22</maven.compiler.target>
+	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	
+   <!-- SonarCloud configuration -->
+    <sonar.organization>libraryse-project</sonar.organization>
+    <sonar.projectKey>LibrarySE-Project_LibraryManagementSystem</sonar.projectKey>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+	</properties>
+
 
     <dependencies>
 
