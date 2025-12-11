@@ -43,22 +43,15 @@ package librarySE.managers;
 public class Admin extends User {
 
     /** The single, globally accessible Admin instance (Singleton). */
-    private static volatile Admin instance;
+    private static Admin instance;   // no volatile – we use synchronization instead
 
     /** Tracks whether the admin is currently logged in. */
     private boolean loggedIn;
 
-
     /**
      * Private constructor to enforce the Singleton pattern.
-     * <p>
      * Initializes the admin with a username, password, and email.
      * The role is automatically set to {@link Role#ADMIN}.
-     * </p>
-     *
-     * @param username the admin’s username
-     * @param password the admin’s password (validated and hashed)
-     * @param email    the admin’s valid email address
      */
     private Admin(String username, String password, String email) {
         super(username, Role.ADMIN, password, email);
@@ -66,7 +59,7 @@ public class Admin extends User {
     }
 
     /**
-     * Initializes the singleton {@code Admin} instance.
+     * Initializes the singleton {@code Admin} instance in a thread-safe way.
      * <p>
      * Must be called exactly once before calling {@link #getInstance()}.
      * Subsequent calls will throw an {@link IllegalStateException}.
@@ -78,9 +71,12 @@ public class Admin extends User {
      * @throws IllegalStateException if an admin instance already exists
      */
     public static void initialize(String username, String password, String email) {
-        if (instance != null)
-            throw new IllegalStateException("Admin already initialized");
-        instance = new Admin(username, password, email);
+        synchronized (Admin.class) {
+            if (instance != null) {
+                throw new IllegalStateException("Admin already initialized");
+            }
+            instance = new Admin(username, password, email);
+        }
     }
 
     /**
@@ -90,18 +86,15 @@ public class Admin extends User {
      * @throws IllegalStateException if {@link #initialize(String, String, String)} was not called first
      */
     public static Admin getInstance() {
-        if (instance == null)
+        Admin current = instance;
+        if (current == null) {
             throw new IllegalStateException("Admin not initialized yet");
-        return instance;
+        }
+        return current;
     }
-
 
     /**
      * Attempts to log the admin in using the provided credentials.
-     * <p>
-     * Compares the entered username and password with the stored values.
-     * If successful, the {@code loggedIn} flag is set to {@code true}.
-     * </p>
      *
      * @param enteredUser the username entered by the user
      * @param enteredPass the password entered by the user
@@ -112,21 +105,12 @@ public class Admin extends User {
         return loggedIn;
     }
 
-    /**
-     * Logs the admin out of the system.
-     * <p>
-     * Simply resets the {@code loggedIn} flag to {@code false}.
-     * </p>
-     */
+    /** Logs the admin out of the system. */
     public void logout() {
         loggedIn = false;
     }
 
-    /**
-     * Checks whether the admin is currently logged in.
-     *
-     * @return {@code true} if logged in, otherwise {@code false}
-     */
+    /** @return {@code true} if the admin is currently logged in */
     public boolean isLoggedIn() {
         return loggedIn;
     }
