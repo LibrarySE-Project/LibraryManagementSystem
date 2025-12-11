@@ -20,9 +20,11 @@
     <sonar.projectKey>LibrarySE-Project_LibraryManagementSystem</sonar.projectKey>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
-    <!-- Exclude GUI package from coverage in SonarCloud -->
+    <!-- Exclude GUI package from Sonar analysis + coverage -->
+    <sonar.exclusions>src/main/java/librarySE/app/**</sonar.exclusions>
     <sonar.coverage.exclusions>src/main/java/librarySE/app/**</sonar.coverage.exclusions>
 </properties>
+
 
 
     <dependencies>
