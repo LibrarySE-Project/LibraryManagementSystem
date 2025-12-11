@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ActivityReportServiceTest {
 
-    ActivityReportService service;
-    User u1, u2;
-    LibraryItem book1, book2;
-    BorrowRecord r1, r2, r3;
+    private ActivityReportService service;
+    private User u1, u2;
+    private LibraryItem book1, book2;
+    private BorrowRecord r1, r2, r3;
 
     @BeforeEach
     void setup() {
@@ -26,18 +26,37 @@ class ActivityReportServiceTest {
         book1 = new Book("ISBN1", "T1", "A1", BigDecimal.TEN);
         book2 = new Book("ISBN2", "T2", "A2", BigDecimal.ONE);
 
-        // borrow dates (all old → guaranteed overdue when checking with a future date)
-        r1 = new BorrowRecord(u1, book1, book1.getMaterialType().createFineStrategy(), LocalDate.now().minusDays(10));
-        r2 = new BorrowRecord(u1, book2, book2.getMaterialType().createFineStrategy(), LocalDate.now().minusDays(5));
-        r3 = new BorrowRecord(u2, book1, book1.getMaterialType().createFineStrategy(), LocalDate.now().minusDays(20));
+        // Borrow dates in the past so they can become overdue for a future reference date
+        r1 = new BorrowRecord(
+                u1,
+                book1,
+                book1.getMaterialType().createFineStrategy(),
+                LocalDate.now().minusDays(10)
+        );
+        r2 = new BorrowRecord(
+                u1,
+                book2,
+                book2.getMaterialType().createFineStrategy(),
+                LocalDate.now().minusDays(5)
+        );
+        r3 = new BorrowRecord(
+                u2,
+                book1,
+                book1.getMaterialType().createFineStrategy(),
+                LocalDate.now().minusDays(20)
+        );
 
         service = new ActivityReportService(List.of(r1, r2, r3));
     }
 
-    // Constructor Tests
+    // ===========================
+    // Constructor tests
+    // ===========================
+
     @Test
     void testConstructorRejectsNullList() {
-        assertThrows(IllegalArgumentException.class, () -> new ActivityReportService(null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ActivityReportService(null));
     }
 
     @Test
@@ -46,15 +65,18 @@ class ActivityReportServiceTest {
         assertNotNull(s);
     }
 
+    // ===========================
+    // getTopBorrowers tests
+    // ===========================
 
-    // ===========================
-    // getTopBorrowers Tests
-    // ===========================
     @Test
     void testGetTopBorrowers() {
         Map<User, Long> map = service.getTopBorrowers();
+
+        // u1 has r1 and r2, u2 has r3
         assertEquals(2L, map.get(u1));
         assertEquals(1L, map.get(u2));
+        assertEquals(2, map.size());
     }
 
     @Test
@@ -64,42 +86,47 @@ class ActivityReportServiceTest {
         assertTrue(map.isEmpty());
     }
 
+    // ===========================
+    // getMostBorrowedItems tests
+    // ===========================
 
-    // ===========================
-    // getMostBorrowedItems Tests
-    // ===========================
     @Test
     void testGetMostBorrowedItems() {
-        Map<LibraryItem, Long> map = service.getMostBorrowedItems();
-        assertEquals(2L, map.get(book1));
-        assertEquals(1L, map.get(book2));
+        Map<String, Long> map = service.getMostBorrowedItems();
+
+        String labelBook1 = book1.getTitle() + " (" + book1.getMaterialType() + ")";
+        String labelBook2 = book2.getTitle() + " (" + book2.getMaterialType() + ")";
+
+        assertEquals(2L, map.get(labelBook1)); // r1 and r3
+        assertEquals(1L, map.get(labelBook2)); // r2
+        assertEquals(2, map.size());
     }
 
     @Test
     void testGetMostBorrowedItemsEmpty() {
         ActivityReportService s = new ActivityReportService(Collections.emptyList());
-        assertTrue(s.getMostBorrowedItems().isEmpty());
+        Map<String, Long> map = s.getMostBorrowedItems();
+        assertTrue(map.isEmpty());
     }
 
+    // ===========================
+    // getOverdueItemsForUser tests
+    // ===========================
 
-    // ===========================
-    // getOverdueItemsForUser Tests
-    // ===========================
     @Test
     void testGetOverdueItemsForUser() {
-        LocalDate today = LocalDate.now().plusDays(50);
-        List<BorrowRecord> list = service.getOverdueItemsForUser(u1, today);
+        LocalDate farFuture = LocalDate.now().plusDays(50);
+        List<BorrowRecord> list = service.getOverdueItemsForUser(u1, farFuture);
 
-        assertEquals(2, list.size());  // both r1 and r2 should be overdue for u1
+        assertEquals(2, list.size());
         assertTrue(list.contains(r1));
         assertTrue(list.contains(r2));
     }
 
     @Test
     void testGetOverdueItemsForUserNoneOverdue() {
-        LocalDate dateBeforeDue = LocalDate.now();  // same date → not overdue
-
-        List<BorrowRecord> list = service.getOverdueItemsForUser(u1, dateBeforeDue);
+        LocalDate today = LocalDate.now();
+        List<BorrowRecord> list = service.getOverdueItemsForUser(u1, today);
 
         assertTrue(list.isEmpty());
     }
@@ -123,4 +150,3 @@ class ActivityReportServiceTest {
         assertTrue(list.isEmpty());
     }
 }
-

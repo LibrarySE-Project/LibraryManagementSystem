@@ -1,0 +1,28 @@
+[
+  {
+    "user": {
+      "id": "0e8d3466-cada-46be-ab7f-a3c105c2440f",
+      "username": "adm",
+      "role": "USER",
+      "passwordHash": "545af48592779242691995dff11d83f83e0eaa921bde9b489acba4d1a0cdfdcd",
+      "fineBalance": 0,
+      "email": "s12216855@stu.najah.edu"
+    },
+    "item": {
+      "type": "CD",
+      "title": "x",
+      "artist": "x",
+      "totalCopies": 1,
+      "availableCopies": 0,
+      "id": "d9eccd33-b4e0-476b-80ff-273a8c3933f9",
+      "price": 39.99
+    },
+    "borrowPeriodDays": 7,
+    "borrowDateTime": "2025-12-11T00:00:00",
+    "dueDateTime": "2025-12-18T00:00:00",
+    "fine": 0,
+    "fineApplied": false,
+    "finePaid": 0,
+    "status": "BORROWED"
+  }
+]

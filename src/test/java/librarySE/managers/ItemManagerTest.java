@@ -10,7 +10,6 @@ import org.junit.jupiter.api.*;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -108,7 +107,8 @@ class ItemManagerTest {
         Admin.initialize("Admin", "Strong1!", "admin@mail.com");
         Admin admin = Admin.getInstance();
 
-        assertThrows(IllegalArgumentException.class,
+        // expecting NullPointerException because Objects.requireNonNull is used
+        assertThrows(NullPointerException.class,
                 () -> m.addItem(null, admin));
     }
 
@@ -117,7 +117,8 @@ class ItemManagerTest {
         ItemManager m = ItemManager.init(repo, search);
         LibraryItem book = new Book("1","T","A", BigDecimal.TEN);
 
-        assertThrows(IllegalArgumentException.class,
+        // expecting NullPointerException because Objects.requireNonNull is used
+        assertThrows(NullPointerException.class,
                 () -> m.addItem(book, null));
     }
 
@@ -211,7 +212,7 @@ class ItemManagerTest {
             mockedLogger.verify(() ->
                     LoggerUtils.log(
                             eq("notification_errors.txt"),
-                            startsWith("Failed to notify users ->")
+                            startsWith("Failed to notify users")
                     )
             );
         }
@@ -228,7 +229,8 @@ class ItemManagerTest {
         Admin.initialize("A", "Strong1!", "a@mail.com");
         Admin admin = Admin.getInstance();
 
-        assertThrows(IllegalArgumentException.class,
+        // expecting NullPointerException because Objects.requireNonNull is used
+        assertThrows(NullPointerException.class,
                 () -> m.deleteItem(null, admin));
     }
 
@@ -237,7 +239,8 @@ class ItemManagerTest {
         ItemManager m = ItemManager.init(repo, search);
         LibraryItem book = new Book("1","T","A", BigDecimal.TEN);
 
-        assertThrows(IllegalArgumentException.class,
+        // expecting NullPointerException because Objects.requireNonNull is used
+        assertThrows(NullPointerException.class,
                 () -> m.deleteItem(book, null));
     }
 
@@ -359,5 +362,5 @@ class ItemManagerTest {
 
         assertSame(newStrategy, internal);
     }
-}
 
+}

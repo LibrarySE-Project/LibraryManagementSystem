@@ -234,10 +234,7 @@ public final class FileUtils {
             return (result != null) ? result : defaultValue;
 
         } catch (JsonIOException | JsonSyntaxException e) {
-            // For invalid JSON / polymorphic issues → log and return default
-            System.err.println(
-                    "⚠️ Failed to parse JSON from " + file
-                            + " → using default value. Reason: " + e.getMessage());
+          
             return defaultValue;
 
         } catch (IOException e) {

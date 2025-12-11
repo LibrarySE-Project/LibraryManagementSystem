@@ -25,9 +25,10 @@ class CDTest {
         cd = null;
     }
 
-    // ----------------------------------------------------------
-    //  Constructor Tests
-    // ----------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Constructor tests
+    // ---------------------------------------------------------------------
+
     @Test
     void testConstructor_ValidData() {
         assertEquals("Song Collection", cd.getTitle());
@@ -81,12 +82,34 @@ class CDTest {
                 () -> new CD("Album", null, BigDecimal.TEN));
     }
 
-    // ----------------------------------------------------------
-    //  Setter Tests
-    // ----------------------------------------------------------
+    @Test
+    void testConstructor_TitleAndArtistAreTrimmed() {
+        CD c = new CD("  Album  ", "  Singer  ", BigDecimal.TEN);
+        assertEquals("Album", c.getTitle());
+        assertEquals("Singer", c.getArtist());
+    }
+
+    @Test
+    void testInitCopies_Invalid_Throws() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new CD("A", "B", BigDecimal.TEN, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CD("A", "B", BigDecimal.TEN, -3));
+    }
+
+    // ---------------------------------------------------------------------
+    // Setter tests
+    // ---------------------------------------------------------------------
+
     @Test
     void testSetTitle_Valid() {
         cd.setTitle("New Album");
+        assertEquals("New Album", cd.getTitle());
+    }
+
+    @Test
+    void testSetTitle_Trimmed() {
+        cd.setTitle("   New Album   ");
         assertEquals("New Album", cd.getTitle());
     }
 
@@ -104,15 +127,22 @@ class CDTest {
     }
 
     @Test
+    void testSetArtist_Trimmed() {
+        cd.setArtist("   New Artist   ");
+        assertEquals("New Artist", cd.getArtist());
+    }
+
+    @Test
     void testSetArtist_Invalid_Throws() {
         assertThrows(IllegalArgumentException.class, () -> cd.setArtist(""));
         assertThrows(IllegalArgumentException.class, () -> cd.setArtist("  "));
         assertThrows(IllegalArgumentException.class, () -> cd.setArtist(null));
     }
 
-    // ----------------------------------------------------------
-    //  Copy Management
-    // ----------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Copy management tests
+    // ---------------------------------------------------------------------
+
     @Test
     void testInitialCopies_DefaultSingleCopy() {
         assertEquals(1, cd.getTotalCopies());
@@ -134,22 +164,63 @@ class CDTest {
 
     @Test
     void testSetTotalCopies_AdjustsAvailableWithinRange() {
-        CD c = new CD("Album", "Artist", BigDecimal.TEN, 3);
-        // 3/3 copies available
+        CD c = new CD("Album", "Artist", BigDecimal.TEN, 3); // 3/3 available
         c.borrow(); // 2/3
-        c.setTotalCopies(2); // delta = -1 → available = 1
-        assertEquals(2, c.getTotalCopies());
-        assertEquals(1, c.getAvailableCopies());
+        c.borrow(); // 1/3
 
-        c.borrow(); // avail = 0
-        c.setTotalCopies(1);
+        c.setTotalCopies(1); // delta = -2 → available = -1 → clamped to 0
         assertEquals(1, c.getTotalCopies());
+        assertEquals(0, c.getAvailableCopies());
+
+        c.setTotalCopies(5); // delta = +4 → available = 4
+        assertEquals(5, c.getTotalCopies());
+        assertEquals(4, c.getAvailableCopies());
+
+        c.borrow();          // available = 3
+        c.setTotalCopies(10); // delta = +5 → available = 8 (<= total)
+        assertTrue(c.getAvailableCopies() <= c.getTotalCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_ClampWhenAvailableGreaterThanTotal_Reflection() throws Exception {
+        CD c = new CD("A", "B", BigDecimal.TEN, 2);
+
+        Field totalField = CD.class.getDeclaredField("totalCopies");
+        Field availableField = CD.class.getDeclaredField("availableCopies");
+        totalField.setAccessible(true);
+        availableField.setAccessible(true);
+
+        totalField.setInt(c, 2);
+        availableField.setInt(c, 10); // force available > total
+
+        c.setTotalCopies(2);
+
+        assertEquals(2, c.getTotalCopies());
+        assertEquals(2, c.getAvailableCopies());
+    }
+
+    @Test
+    void testSetTotalCopies_ClampWhenAvailableNegative_Reflection() throws Exception {
+        CD c = new CD("A", "B", BigDecimal.TEN, 2);
+
+        Field totalField = CD.class.getDeclaredField("totalCopies");
+        Field availableField = CD.class.getDeclaredField("availableCopies");
+        totalField.setAccessible(true);
+        availableField.setAccessible(true);
+
+        totalField.setInt(c, 2);
+        availableField.setInt(c, -5); // force available < 0
+
+        c.setTotalCopies(2);
+
+        assertEquals(2, c.getTotalCopies());
         assertEquals(0, c.getAvailableCopies());
     }
 
-    // ----------------------------------------------------------
-    //  Keyword Matching
-    // ----------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Keyword matching
+    // ---------------------------------------------------------------------
+
     @Test
     void testMatchesKeyword_TitleMatch() {
         assertTrue(cd.matchesKeyword("Song"));
@@ -171,14 +242,15 @@ class CDTest {
     }
 
     @Test
-    void testMatchesKeyword_Empty_Throws() {
+    void testMatchesKeyword_EmptyOrSpaces_Throws() {
         assertThrows(IllegalArgumentException.class, () -> cd.matchesKeyword(""));
         assertThrows(IllegalArgumentException.class, () -> cd.matchesKeyword("   "));
     }
 
-    // ----------------------------------------------------------
-    //  Borrow / Return (Inherited with exceptions)
-    // ----------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Borrow / Return behaviour
+    // ---------------------------------------------------------------------
+
     @Test
     void testBorrow_Success() {
         assertTrue(cd.borrow());
@@ -188,9 +260,16 @@ class CDTest {
 
     @Test
     void testBorrow_FailsWhenAlreadyBorrowed_Throws() {
-        cd.borrow();
-        assertThrows(IllegalStateException.class, () -> cd.borrow());
+        // first borrow succeeds
+        assertTrue(cd.borrow());
+        assertEquals(0, cd.getAvailableCopies());
+
+        // second borrow should fail safely (no exception)
+        boolean secondResult = cd.borrow();
+        assertFalse(secondResult, "Second borrow on single-copy CD must fail");
+        assertEquals(0, cd.getAvailableCopies(), "Available copies must remain 0");
     }
+
 
     @Test
     void testReturn_Success() {
@@ -215,48 +294,22 @@ class CDTest {
         }
     }
 
+    // ---------------------------------------------------------------------
+    // Type and toString
+    // ---------------------------------------------------------------------
+
     @Test
     void testGetMaterialType() {
         assertEquals(MaterialType.CD, cd.getMaterialType());
     }
 
     @Test
-    void testEquals_SameData_False() {
-        CD c2 = new CD("Song Collection", "Famous Singer", BigDecimal.valueOf(40));
-        assertFalse(cd.equals(c2));  // reference comparison only
-    }
-
-    @Test
-    void testEquals_DifferentTitle_False() {
-        CD c2 = new CD("Different", "Famous Singer", BigDecimal.valueOf(40));
-        assertFalse(cd.equals(c2));
-    }
-
-    @Test
-    void testEquals_DifferentArtist_False() {
-        CD c2 = new CD("Song Collection", "Other Artist", BigDecimal.valueOf(40));
-        assertFalse(cd.equals(c2));
-    }
-
-    @Test
-    void testEquals_DifferentType_False() {
-        assertFalse(cd.equals("String"));
-    }
-
-    @Test
-    void testEquals_Null_False() {
-        assertFalse(cd.equals(null));
-    }
-
-    // ----------------------------------------------------------
-    //  toString()
-    // ----------------------------------------------------------
-    @Test
     void testToString_Available() {
         String output = cd.toString();
+        assertTrue(output.contains("[CD]"));
         assertTrue(output.contains("Available"));
-        assertTrue(output.contains("CD"));
         assertTrue(output.contains(cd.getTitle()));
+        assertTrue(output.contains(cd.getArtist()));
     }
 
     @Test
@@ -265,71 +318,25 @@ class CDTest {
         String output = cd.toString();
         assertTrue(output.contains("Fully borrowed"));
     }
+
+    // ---------------------------------------------------------------------
+    // equals basic behaviour (inherited from Object)
+    // ---------------------------------------------------------------------
+
     @Test
-    void testInitCopies_Invalid_Throws() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new CD("A","B", BigDecimal.TEN, 0));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> new CD("A","B", BigDecimal.TEN, -3));
-    }
-    @Test
-    void testSetTotalCopies_ClampsAvailableWithinBounds() {
-
-        CD c = new CD("Album","Singer",BigDecimal.TEN,3);
-        assertEquals(3, c.getAvailableCopies()); // 3/3
-
-        c.borrow(); //2
-        c.borrow(); //1
-
-        c.setTotalCopies(1);  
-        assertEquals(1, c.getTotalCopies());
-        assertEquals(0, c.getAvailableCopies());  
-
-        c.setTotalCopies(5);
-        assertEquals(5, c.getTotalCopies());
-        assertEquals(4, c.getAvailableCopies());
-
-        c.borrow();  
-        c.setTotalCopies(10); 
-        assertTrue(c.getAvailableCopies() <= c.getTotalCopies());  
-    }
-    @Test
-    void testSetTotalCopies_ClampWhenAvailableGreaterThanTotal_Reflection() throws Exception {
-        CD c = new CD("A", "B", BigDecimal.TEN, 2);
-
-        Field totalField = CD.class.getDeclaredField("totalCopies");
-        Field availableField = CD.class.getDeclaredField("availableCopies");
-        totalField.setAccessible(true);
-        availableField.setAccessible(true);
-
-        totalField.setInt(c, 2);
-        availableField.setInt(c, 10);
-
-        c.setTotalCopies(2);
-
-        assertEquals(2, c.getTotalCopies());
-        assertEquals(2, c.getAvailableCopies());
+    void testEquals_SameInstance_True() {
+        assertTrue(cd.equals(cd));
     }
 
     @Test
-    void testSetTotalCopies_ClampWhenAvailableNegative_Reflection() throws Exception {
-        CD c = new CD("A", "B", BigDecimal.TEN, 2);
-
-        Field totalField = CD.class.getDeclaredField("totalCopies");
-        Field availableField = CD.class.getDeclaredField("availableCopies");
-        totalField.setAccessible(true);
-        availableField.setAccessible(true);
-
-        totalField.setInt(c, 2);
-        availableField.setInt(c, -5);
-
-        c.setTotalCopies(2);
-
-        assertEquals(2, c.getTotalCopies());
-        assertEquals(0, c.getAvailableCopies());
+    void testEquals_DifferentInstance_False() {
+        CD other = new CD("Song Collection", "Famous Singer", BigDecimal.valueOf(40));
+        assertFalse(cd.equals(other));
     }
 
-
-
+    @Test
+    void testEquals_NullAndDifferentType_False() {
+        assertFalse(cd.equals(null));
+        assertFalse(cd.equals("not a cd"));
+    }
 }

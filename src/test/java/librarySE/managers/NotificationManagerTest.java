@@ -1,166 +1,116 @@
 package librarySE.managers;
 
-import librarySE.core.*;
 import librarySE.managers.notifications.Notifier;
-import librarySE.repo.BorrowRecordRepository;
-import librarySE.repo.WaitlistRepository;
-import librarySE.repo.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.List;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class NotificationManagerTest {
 
-    // Fake borrow repo
-    static class FakeBorrowRepo implements BorrowRecordRepository {
-        List<BorrowRecord> store = new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<BorrowRecord> loadAll() {
-            return new ArrayList<>(store);
-        }
-
-        @Override
-        public void saveAll(List<BorrowRecord> records) {
-            store.clear();
-            store.addAll(records);
-        }
-    }
-
-    // Fake waitlist repo
-    static class FakeWaitlistRepo implements WaitlistRepository {
-        List<WaitlistEntry> store = new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<WaitlistEntry> loadAll() {
-            return new ArrayList<>(store);
-        }
-
-        @Override
-        public void saveAll(List<WaitlistEntry> entries) {
-            store.clear();
-            store.addAll(entries);
-        }
-    }
-
-    // Fake user repo
-    static class FakeUserRepo implements UserRepository {
-        List<User> users = new CopyOnWriteArrayList<>();
-
-        @Override
-        public List<User> loadAll() {
-            return new ArrayList<>(users);
-        }
-
-        @Override
-        public void saveAll(List<User> list) {
-            users.clear();
-            users.addAll(list);
-        }
-    }
-
-    // Fake notifier (captures calls)
-    static class FakeNotifier implements Notifier {
-        List<String> sent = new ArrayList<>();
-
-        @Override
-        public void notify(User user, String subject, String message) {
-            sent.add(user.getUsername() + "|" + message);
-        }
-    }
-
-    FakeBorrowRepo borrowRepo;
-    FakeWaitlistRepo waitRepo;
-    FakeUserRepo userRepo;
-
-    BorrowManager bm;
-    NotificationManager nm;
-
-    User user;
-    LibraryItem book;
+    private BorrowManager borrowManager;
+    private NotificationManager notificationManager;
+    private Notifier notifier;
+    private LocalDate date;
 
     @BeforeEach
-    void setup() throws Exception {
-
-        // Reset BorrowManager singleton
-        var f1 = BorrowManager.class.getDeclaredField("instance");
-        f1.setAccessible(true);
-        f1.set(null, null);
-
-        // Reset UserManager singleton
-        var f2 = UserManager.class.getDeclaredField("instance");
-        f2.setAccessible(true);
-        f2.set(null, null);
-
-        borrowRepo = new FakeBorrowRepo();
-        waitRepo = new FakeWaitlistRepo();
-        userRepo = new FakeUserRepo();
-
-        // init user manager
-        UserManager.init(userRepo);
-        user = new User("Malak", Role.USER, "pass123", "m@ps.com");
-        userRepo.users.add(user);
-
-        // item
-        book = new Book("ISBN", "Title", "Author", BigDecimal.TEN);
-
-        // init borrow manager
-        BorrowManager.init(borrowRepo, waitRepo);
-        bm = BorrowManager.getInstance();
-
-        nm = new NotificationManager(bm);
+    void setUp() {
+        borrowManager = mock(BorrowManager.class);
+        notificationManager = new NotificationManager(borrowManager);
+        notifier = mock(Notifier.class);
+        date = LocalDate.of(2025, 1, 1);
     }
 
-    // sendReminders sends notification if overdue
+    // Constructor tests
+
     @Test
-    void testSendReminderForOverdueItem() {
-        bm.borrowItem(user, book);
-
-        LocalDate overdueDate = LocalDate.now().plusDays(50);
-
-        FakeNotifier notifier = new FakeNotifier();
-
-        nm.sendReminders(notifier, overdueDate);
-
-        assertEquals(1, notifier.sent.size());
-    }
-
-    // sendReminders sends nothing if no overdue items
-    @Test
-    void testNoRemindersWhenNothingOverdue() {
-        FakeNotifier notifier = new FakeNotifier();
-
-        nm.sendReminders(notifier, LocalDate.now());
-
-        assertEquals(0, notifier.sent.size());
-    }
-
-    // sendReminders rejects null notifier
-    @Test
-    void testNotifierNullThrows() {
-        assertThrows(IllegalArgumentException.class,
-                () -> nm.sendReminders(null, LocalDate.now()));
-    }
-
-    // sendReminders rejects null date
-    @Test
-    void testDateNullThrows() {
-        FakeNotifier notifier = new FakeNotifier();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> nm.sendReminders(notifier, null));
-    }
-    @Test
-    void testConstructorThrowsWhenBorrowManagerNull() {
+    void constructor_nullBorrowManager_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class,
                 () -> new NotificationManager(null));
     }
 
-}
+    // sendReminders argument validation
 
+    @Test
+    void sendReminders_nullNotifier_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> notificationManager.sendReminders(null, date));
+    }
+
+    @Test
+    void sendReminders_nullDate_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> notificationManager.sendReminders(notifier, null));
+    }
+
+    // Behavior when there are no overdue items
+
+    @Test
+    void sendReminders_noOverdueItems_doesNotSendAnyNotification() {
+        when(borrowManager.getOverdueItems(date)).thenReturn(Collections.emptyList());
+
+        notificationManager.sendReminders(notifier, date);
+
+        verify(borrowManager).getOverdueItems(date);
+        verifyNoInteractions(notifier);
+    }
+
+    // Single user, multiple overdue items -> one notification with correct count
+
+    @Test
+    void sendReminders_singleUserMultipleOverdue_sendsOneNotificationWithCorrectCount() {
+        User user = mock(User.class);
+
+        BorrowRecord r1 = mock(BorrowRecord.class);
+        BorrowRecord r2 = mock(BorrowRecord.class);
+
+        when(r1.getUser()).thenReturn(user);
+        when(r2.getUser()).thenReturn(user);
+
+        when(borrowManager.getOverdueItems(date)).thenReturn(List.of(r1, r2));
+
+        notificationManager.sendReminders(notifier, date);
+
+        String expectedSubject = "📚 Reminder: You have overdue library items!";
+        String expectedMessage = "You have 2 overdue item(s) as of " + date + ".";
+
+        verify(borrowManager).getOverdueItems(date);
+        verify(notifier).notify(user, expectedSubject, expectedMessage);
+        verifyNoMoreInteractions(notifier);
+    }
+
+    // Multiple users with different overdue counts
+
+    @Test
+    void sendReminders_multipleUsers_sendsOneNotificationPerUserWithProperCounts() {
+        User user1 = mock(User.class);
+        User user2 = mock(User.class);
+
+        BorrowRecord r1 = mock(BorrowRecord.class);
+        BorrowRecord r2 = mock(BorrowRecord.class);
+        BorrowRecord r3 = mock(BorrowRecord.class);
+
+        when(r1.getUser()).thenReturn(user1);
+        when(r2.getUser()).thenReturn(user1);
+        when(r3.getUser()).thenReturn(user2);
+
+        when(borrowManager.getOverdueItems(date)).thenReturn(List.of(r1, r2, r3));
+
+        notificationManager.sendReminders(notifier, date);
+
+        String expectedSubject = "📚 Reminder: You have overdue library items!";
+        String expectedMsgUser1 = "You have 2 overdue item(s) as of " + date + ".";
+        String expectedMsgUser2 = "You have 1 overdue item(s) as of " + date + ".";
+
+        verify(borrowManager).getOverdueItems(date);
+
+        verify(notifier).notify(user1, expectedSubject, expectedMsgUser1);
+        verify(notifier).notify(user2, expectedSubject, expectedMsgUser2);
+        verifyNoMoreInteractions(notifier);
+    }
+}

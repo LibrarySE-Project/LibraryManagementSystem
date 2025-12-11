@@ -27,7 +27,6 @@ public final class LoggerUtils {
     /** Directory where log files are stored. */
     private static final Path LOG_DIR = Paths.get("library_data", "logs");
 
-    // Static initializer ensures log directory exists 
     static {
         try {
             if (!Files.exists(LOG_DIR)) Files.createDirectories(LOG_DIR);
@@ -52,7 +51,6 @@ public final class LoggerUtils {
     public static void log(String fileName, String message) {
         Path file = LOG_DIR.resolve(fileName);
 
-        // Retrieve caller info for better traceability
         StackTraceElement caller = Thread.currentThread().getStackTrace()[2];
         String callerInfo = caller.getClassName().substring(
                 caller.getClassName().lastIndexOf('.') + 1)

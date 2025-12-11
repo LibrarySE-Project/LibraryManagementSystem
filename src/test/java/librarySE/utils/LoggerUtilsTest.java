@@ -7,92 +7,144 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.mockito.MockedStatic;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+
+import java.net.URL;
+import java.net.URLClassLoader;
+
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class LoggerUtilsTest {
 
-    private static Path tempRoot;      // e.g.  /tmp/log_test_12345
-    private static Path tempLogDir;    // e.g.  /tmp/log_test_12345/library_data/logs
+    private static Path logDir;
 
     @BeforeAll
     static void setup() throws IOException {
-        // Create isolated folder
-        tempRoot = Files.createTempDirectory("log_test_");
-
-        // Build same directory structure used by LoggerUtils
-        tempLogDir = tempRoot.resolve("library_data/logs");
-        Files.createDirectories(tempLogDir);
-
-        // Change current working directory so LoggerUtils writes inside tempRoot
-        System.setProperty("user.dir", tempRoot.toAbsolutePath().toString());
+        logDir = Paths.get("library_data", "logs");
+        Files.createDirectories(logDir);
     }
 
-    @AfterAll
-    static void cleanup() throws IOException {
-        // Delete all files created
-        if (Files.exists(tempRoot)) {
-            Files.walk(tempRoot)
-                    .sorted((a, b) -> b.compareTo(a)) // delete children first
-                    .forEach(path -> {
-                        try { Files.deleteIfExists(path); } catch (Exception ignored) {}
-                    });
+    @AfterEach
+    void cleanupFiles() throws IOException {
+        if (Files.exists(logDir)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDir, "*.txt")) {
+                for (Path p : stream) {
+                    Files.deleteIfExists(p);
+                }
+            }
         }
     }
 
-    // --------------------------------------------------------------------
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testLog_createsNewFileAndWritesContent() throws Exception {
         String fileName = "test_create.txt";
+        Path logFile = logDir.resolve(fileName);
+        Files.deleteIfExists(logFile);
 
         LoggerUtils.log(fileName, "Hello");
 
-        Path logFile = tempLogDir.resolve(fileName);
         assertTrue(Files.exists(logFile));
-
         List<String> lines = Files.readAllLines(logFile);
+
         assertEquals(1, lines.size());
         assertTrue(lines.get(0).contains("Hello"));
     }
 
-    // --------------------------------------------------------------------
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testLog_appendsToExistingFile() throws Exception {
         String fileName = "append_test.txt";
+        Path logFile = logDir.resolve(fileName);
+        Files.deleteIfExists(logFile);
 
         LoggerUtils.log(fileName, "First");
         LoggerUtils.log(fileName, "Second");
 
-        Path logFile = tempLogDir.resolve(fileName);
-        List<String> lines = Files.readAllLines(logFile);
+        assertTrue(Files.exists(logFile));
 
+        List<String> lines = Files.readAllLines(logFile);
         assertEquals(2, lines.size());
         assertTrue(lines.get(0).contains("First"));
         assertTrue(lines.get(1).contains("Second"));
     }
 
-    // --------------------------------------------------------------------
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testLog_includesCallerMethodName() throws Exception {
         String fileName = "caller.txt";
+        Path logFile = logDir.resolve(fileName);
+        Files.deleteIfExists(logFile);
 
         LoggerUtils.log(fileName, "Check");
 
-        Path logFile = tempLogDir.resolve(fileName);
         List<String> lines = Files.readAllLines(logFile);
+        assertEquals(1, lines.size());
 
-        assertTrue(lines.get(0).contains("testLog_includesCallerMethodName"));
-        assertTrue(lines.get(0).contains("Check"));
+        String line = lines.get(0);
+        assertTrue(line.contains("LoggerUtilsTest.testLog_includesCallerMethodName"));
+        assertTrue(line.contains("Check"));
     }
 
-    // --------------------------------------------------------------------
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testLog_throwsRuntimeExceptionOnFailure() throws Exception {
-        // Create a file where a directory should be
-        Path fakeDir = tempLogDir.resolve("not_a_dir");
-        Files.writeString(fakeDir, "X"); // becomes a file, not directory
+        String dirName = "dir_as_file";
+        Path dir = logDir.resolve(dirName);
+        Files.createDirectories(dir);
 
-        // Now using it as a folder will cause IOException
-        assertThrows(RuntimeException.class, () ->
-                LoggerUtils.log("not_a_dir/file.txt", "Err")
-        );
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> LoggerUtils.log(dirName, "Err"));
+
+        assertTrue(ex.getMessage().contains("Failed to write log"));
+    }
+
+    @Test
+    @Order(5)
+    void testStaticBlock_successWhenDirectoryAlreadyExists() throws Exception {
+        try (MockedStatic<Files> mocked = mockStatic(Files.class)) {
+
+            mocked.when(() -> Files.exists(any(Path.class))).thenReturn(true);
+
+            URL classUrl = LoggerUtils.class
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation();
+
+            try (URLClassLoader cl = new URLClassLoader(new URL[]{classUrl}, null)) {
+                Class<?> clazz = Class.forName("librarySE.utils.LoggerUtils", true, cl);
+                assertNotNull(clazz);
+            }
+
+            mocked.verify(() -> Files.createDirectories(any(Path.class)), never());
+        }
+    }
+
+    @Test
+    @Order(6)
+    void testStaticBlock_handlesIOExceptionOnInit() throws Exception {
+        try (MockedStatic<Files> mocked = mockStatic(Files.class)) {
+
+            mocked.when(() -> Files.exists(any(Path.class))).thenReturn(false);
+            mocked.when(() -> Files.createDirectories(any(Path.class)))
+                    .thenThrow(new IOException("boom"));
+
+            URL classUrl = LoggerUtils.class
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation();
+
+            try (URLClassLoader cl = new URLClassLoader(new URL[]{classUrl}, null)) {
+
+                ExceptionInInitializerError error =
+                        assertThrows(ExceptionInInitializerError.class,
+                                () -> Class.forName("librarySE.utils.LoggerUtils", true, cl));
+
+                assertNotNull(error.getCause());
+                assertTrue(error.getCause() instanceof RuntimeException);
+                assertTrue(error.getCause().getCause() instanceof IOException);
+            }
+        }
     }
 }

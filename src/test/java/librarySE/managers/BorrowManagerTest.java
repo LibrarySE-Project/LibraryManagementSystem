@@ -234,11 +234,7 @@ class BorrowManagerTest {
         when(item.isAvailable()).thenReturn(true);
         when(item.borrow()).thenReturn(true);
 
-        MaterialType materialType = mock(MaterialType.class);
-        FineStrategy fineStrategy = mock(FineStrategy.class);
-        when(materialType.createFineStrategy()).thenReturn(fineStrategy);
-        when(fineStrategy.getBorrowPeriodDays()).thenReturn(14);
-        when(item.getMaterialType()).thenReturn(materialType);
+        when(item.getMaterialType()).thenReturn(MaterialType.BOOK);
 
         boolean result = borrowManager.borrowItem(user, item);
 
@@ -252,6 +248,7 @@ class BorrowManagerTest {
         verify(item).borrow();
         verify(itemManager).saveAll();
     }
+
 
     // --------------------------------------------------------------------
     // returnItem – argument validation
@@ -605,6 +602,143 @@ class BorrowManagerTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> result.add(new WaitlistEntry(itemId1, "c@example.com", LocalDate.now())));
     }
+   
+    @Test
+    void borrowItem_itemBorrowReturnsFalse_throwsIllegalStateException() {
+        borrowManager = BorrowManager.init(borrowRepo, waitlistRepo, itemManager);
+
+        User user = mock(User.class);
+        when(user.hasOutstandingFine()).thenReturn(false);
+
+        LibraryItem item = mock(LibraryItem.class);
+        when(item.isAvailable()).thenReturn(true);
+        when(item.borrow()).thenReturn(false);  // هذا اللي بيفعل الفرع المطلوب
+
+        assertThrows(IllegalStateException.class,
+                () -> borrowManager.borrowItem(user, item),
+                "Expected borrowItem to throw when item.borrow() returns false");
+
+        // نتأكد أنه حاول يعمل borrow
+        verify(item).borrow();
+        // ونتأكد إنه ما صار حفظ للآيتمز لأنه فشل
+        verify(itemManager, never()).saveAll();
+    }
+
+    @Test
+    void returnItem_recordsExistButNoneMatch_throwsIllegalArgumentException() {
+        // Arrange: borrower and item we are trying to return
+        UUID borrowerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID otherItemId = UUID.randomUUID();
+
+        User borrower = mock(User.class);
+        when(borrower.getId()).thenReturn(borrowerId);
+
+        LibraryItem item = mock(LibraryItem.class);
+        when(item.getId()).thenReturn(itemId);
+
+        User otherUser = mock(User.class);
+        when(otherUser.getId()).thenReturn(otherUserId);
+
+        LibraryItem otherItem = mock(LibraryItem.class);
+        when(otherItem.getId()).thenReturn(otherItemId);
+
+        // 1) Record with different user
+        BorrowRecord wrongUser = mock(BorrowRecord.class);
+        when(wrongUser.getUser()).thenReturn(otherUser);  // user id mismatch
+        when(wrongUser.getItem()).thenReturn(item);
+        when(wrongUser.isReturned()).thenReturn(false);
+
+        // 2) Record with different item
+        BorrowRecord wrongItem = mock(BorrowRecord.class);
+        when(wrongItem.getUser()).thenReturn(borrower);   // user matches
+        when(wrongItem.getItem()).thenReturn(otherItem);  // item id mismatch
+        when(wrongItem.isReturned()).thenReturn(false);
+
+        // 3) Record with same user & item but already returned
+        BorrowRecord alreadyReturned = mock(BorrowRecord.class);
+        when(alreadyReturned.getUser()).thenReturn(borrower);
+        when(alreadyReturned.getItem()).thenReturn(item);
+        when(alreadyReturned.isReturned()).thenReturn(true); // returned = true
+
+        // Put all three records in the repo before init
+        borrowRepo.store.add(wrongUser);
+        borrowRepo.store.add(wrongItem);
+        borrowRepo.store.add(alreadyReturned);
+
+        borrowManager = BorrowManager.init(borrowRepo, waitlistRepo, itemManager);
+
+        // Act + Assert: since none match the predicate, orElseThrow must fire
+        assertThrows(IllegalArgumentException.class,
+                () -> borrowManager.returnItem(borrower, item),
+                "Expected exception when no matching active borrow record exists despite records");
+    }
+    @Test
+    void payFineForUser_skipsRecordWhenRemainingFineIsZero() {
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(UUID.randomUUID());
+
+        // Single record for this user with zero remaining fine
+        BorrowRecord r = mock(BorrowRecord.class);
+        when(r.getUser()).thenReturn(user);
+        when(r.getRemainingFine()).thenReturn(BigDecimal.ZERO); // triggers recordRemaining <= 0
+        when(r.getFinePaid()).thenReturn(BigDecimal.ZERO);
+
+        borrowRepo.store.add(r);
+
+        borrowManager = BorrowManager.init(borrowRepo, waitlistRepo, itemManager);
+
+        LocalDate date = LocalDate.now();
+
+        borrowManager.payFineForUser(user, BigDecimal.TEN, date);
+
+        // calculateFine is still called
+        verify(r).calculateFine(date);
+        // but setFinePaid must not be called because recordRemaining <= 0
+        verify(r, never()).setFinePaid(any());
+
+        // user.payFine must still be called with the full amount
+        verify(user).payFine(BigDecimal.TEN);
+    }
+    @Test
+    void payFineForUser_stopsLoopWhenRemainingBecomesZero() {
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(UUID.randomUUID());
+
+        // First record: will consume the whole payment
+        BorrowRecord r1 = mock(BorrowRecord.class);
+        when(r1.getUser()).thenReturn(user);
+        when(r1.getRemainingFine()).thenReturn(BigDecimal.valueOf(5));
+        when(r1.getFinePaid()).thenReturn(BigDecimal.ZERO);
+
+        // Second record: should never receive payment because remaining becomes 0
+        BorrowRecord r2 = mock(BorrowRecord.class);
+        when(r2.getUser()).thenReturn(user);
+        when(r2.getRemainingFine()).thenReturn(BigDecimal.valueOf(10));
+        when(r2.getFinePaid()).thenReturn(BigDecimal.ZERO);
+
+        borrowRepo.store.add(r1);
+        borrowRepo.store.add(r2);
+
+        borrowManager = BorrowManager.init(borrowRepo, waitlistRepo, itemManager);
+
+        LocalDate date = LocalDate.now();
+
+        // Pay only 3 → all goes to r1, then remaining becomes 0
+        borrowManager.payFineForUser(user, BigDecimal.valueOf(3), date);
+
+        // r1: should be updated
+        verify(r1).calculateFine(date);
+        verify(r1).setFinePaid(BigDecimal.valueOf(3));
+
+        // r2: calculateFine is called (because we reach it), but break happens
+        verify(r2).calculateFine(date);
+        // so no fine is applied to r2
+        verify(r2, never()).setFinePaid(any());
+
+        // user.payFine still called with the original amount
+        verify(user).payFine(BigDecimal.valueOf(3));
+    }
+
 }
-
-
