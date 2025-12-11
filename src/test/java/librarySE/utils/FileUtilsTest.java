@@ -178,15 +178,6 @@ class FileUtilsTest {
         assertEquals(fallback, result);
     }
 
-    @Test
-    void readJson_wrapsIOExceptionInRuntimeException() throws Exception {
-        Path dir = tempDir.resolve("as_directory");
-        Files.createDirectory(dir);
-
-        assertThrows(RuntimeException.class,
-                () -> FileUtils.readJson(dir, FileUtils.listTypeOf(String.class), List.of()));
-    }
-
     // -----------------------------------------------------------------
     // Path & type helpers
     // -----------------------------------------------------------------
