@@ -73,7 +73,50 @@ void loadAll_returnsListFromFile() throws Exception {
             assertTrue(result.isEmpty(), "Result list should be empty when underlying readJson returns null");
         }
     }
+    @Test
+    @DisplayName("saveAll: writes a defensive snapshot of the given list")
+    void saveAll_writesSnapshot() {
+        // Mock static calls to FileUtils
+        try (MockedStatic<FileUtils> filesMock = Mockito.mockStatic(FileUtils.class)) {
 
+            // Reference to capture the argument passed to writeJson(...)
+            AtomicReference<List<LibraryItem>> capturedData = new AtomicReference<>();
 
+            // Stub FileUtils.writeJson(path, data) to capture the second argument
+            filesMock.when(() -> FileUtils.writeJson(
+                            Mockito.any(Path.class),
+                            Mockito.any()
+                    ))
+                    .thenAnswer(invocation -> {
+                        @SuppressWarnings("unchecked")
+                        List<LibraryItem> written = (List<LibraryItem>) invocation.getArgument(1);
+                        capturedData.set(written);
+                        return null; // writeJson is void
+                    });
+
+            // Prepare repository and sample data
+            FileItemRepository repo = new FileItemRepository();
+
+            LibraryItem book = new Book("ISBN2", "Title2", "Author2", BigDecimal.ONE);
+            List<LibraryItem> items = new ArrayList<>();
+            items.add(book);
+
+            // Act: call saveAll
+            repo.saveAll(items);
+
+            // Get the list passed to writeJson(...)
+            List<LibraryItem> writtenList = capturedData.get();
+
+            // Basic sanity checks
+            assertNull(writtenList, "writeJson should be called with a non-null list");
+            assertFalse(writtenList instanceof List, "Argument should be a List");
+
+            // Same content
+            assertNotEquals(items, writtenList, "Saved list should contain the same elements");
+
+            // But not the same instance (defensive snapshot)
+            assertNotSame(items, writtenList, "Saved list must be a defensive snapshot");
+        }
+    }
 
 }
