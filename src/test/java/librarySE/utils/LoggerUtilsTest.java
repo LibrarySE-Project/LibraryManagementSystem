@@ -147,4 +147,43 @@ class LoggerUtilsTest {
             }
         }
     }
+    @Test
+    void testStaticBlock_directoryExists_noCreation() throws Exception {
+        try (MockedStatic<Files> mocked = mockStatic(Files.class)) {
+
+            mocked.when(() -> Files.exists(any(Path.class))).thenReturn(true);
+
+            URL url = LoggerUtils.class.getProtectionDomain().getCodeSource().getLocation();
+            try (URLClassLoader cl = new URLClassLoader(new URL[]{url}, null)) {
+                Class<?> cls = Class.forName("librarySE.utils.LoggerUtils", true, cl);
+                assertNotNull(cls);
+            }
+
+            mocked.verify(() -> Files.createDirectories(any(Path.class)), never());
+        }
+    }
+    @Test
+    void testStaticBlock_directoryCreationFails_throwsRuntimeException() throws Exception {
+        try (MockedStatic<Files> mocked = mockStatic(Files.class)) {
+
+            mocked.when(() -> Files.exists(any(Path.class))).thenReturn(false);
+            mocked.when(() -> Files.createDirectories(any(Path.class)))
+                    .thenThrow(new IOException("boom"));
+
+            URL url = LoggerUtils.class.getProtectionDomain().getCodeSource().getLocation();
+
+            try (URLClassLoader cl = new URLClassLoader(new URL[]{url}, null)) {
+
+                ExceptionInInitializerError err =
+                        assertThrows(ExceptionInInitializerError.class,
+                                () -> Class.forName("librarySE.utils.LoggerUtils", true, cl));
+
+                assertNotNull(err.getCause());
+                assertTrue(err.getCause() instanceof RuntimeException);
+                assertTrue(err.getCause().getCause() instanceof IOException);
+            }
+        }
+    }
+
+
 }
