@@ -1,4 +1,4 @@
-name: Maven Build with JaCoCo and SonarCloud
+name: Build and Analyze
 
 on:
   push:
@@ -10,10 +10,11 @@ on:
 
 jobs:
   build:
+    name: Build and SonarCloud Scan
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout main branch from GitHub
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -24,28 +25,23 @@ jobs:
           distribution: 'temurin'
           java-version: '22'
 
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      - name: Build, test and analyze with JaCoCo + SonarCloud
+      - name: Build with Maven
+        run: mvn -B verify --file pom.xml
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        with:
+          args: >
+            -Dsonar.projectKey=LibrarySE-Project_LibraryManagementSystem
+            -Dsonar.organization=libraryse-project
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          mvn -B jacoco:prepare-agent verify \
-            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            jacoco:report \
-            -Dsonar.projectKey=LibrarySE-Project_LibraryManagementSystem \
-            -Dsonar.organization=libraryse-project \
-            -Dsonar.host.url=https://sonarcloud.io
